@@ -36,3 +36,4 @@ packages/
 *.binlog
 *.log
 tmp/
+opencode.json
