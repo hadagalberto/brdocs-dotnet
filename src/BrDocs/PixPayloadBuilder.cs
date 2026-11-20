@@ -263,7 +263,7 @@ public sealed class PixPayloadBuilder
         {
             throw new ArgumentException($"The additional data sub-field {id} is already set.", nameof(id));
         }
-        _additionalData.Add(PixTlv.Create(id, value));
+        _additionalData.Add(PixTlv.CreateChild(id, value));
         return this;
     }
 

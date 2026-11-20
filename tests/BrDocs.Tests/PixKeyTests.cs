@@ -101,7 +101,7 @@ public sealed class PixKeyTests
     public void Canonical_Keys_Are_Shorter_Than_The_77_Character_Dict_Limit()
     {
         // The longest possible key is a 77-character e-mail.
-        string email = new string('a', 64) + "@" + new string('b', 8) + ".com.br";
+        string email = new string('a', 64) + "@" + new string('b', 8) + ".com";
         Assert.Equal(77, email.Length);
         Assert.True(PixKey.IsEmail(email));
         string tooLong = new string('a', 65) + "@example.com";

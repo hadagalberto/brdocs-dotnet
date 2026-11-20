@@ -144,7 +144,7 @@ public sealed class PixPayloadTests
             StaticVector,
             PixPayload.CreateStatic(EvpKey, "Fulano de Tal", "Brasília").WithCity("Brasília", uppercase: true).Build().ToString());
         Assert.Equal(
-            PixPayload.CreateStatic(EvpKey, "Fulano de Tal", "SAO PAULO").Build().ToString(),
+            PixPayload.CreateStatic(EvpKey, "Fulano de Tal", "Sao Paulo").Build().ToString(),
             PixPayload.CreateStatic(EvpKey, "Fulano de Tal", "São Paulo").Build().ToString());
     }
 
@@ -290,7 +290,7 @@ public sealed class PixPayloadTests
         Assert.True(PixPayload.IsValid(brCode));
         Assert.Equal("81", Assert.Single(PixPayload.Parse(brCode).UnreservedTemplates).Id);
 
-        PixTlv notATemplate = PixTlv.Create("81", "value");
+        PixTlv notATemplate = PixTlv.Create("59", "value");
         Assert.Throws<ArgumentException>(() => PixPayload.CreateStatic(EvpKey, "Fulano de Tal", "BRASILIA").WithUnreservedTemplate(notATemplate));
         PixTlv wrongGui = PixTlv.CreateTemplate("80", new[] { PixTlv.Create("00", "outro.arranjo") });
         Assert.Throws<ArgumentException>(() => PixPayload.CreateStatic(EvpKey, "Fulano de Tal", "BRASILIA").WithUnreservedTemplate(wrongGui));
@@ -320,12 +320,12 @@ public sealed class PixPayloadTests
         PixPayload parsed = PixPayload.Parse(brCode);
         Assert.Equal("Jose de Ribamar", parsed.Name);
         Assert.Equal("FORTALEZA", parsed.City);
-        Assert.Equal(PixPayload.CreateStatic(EvpKey, "Jose de Ribamar", "Fortaleza").Build().ToString(), brCode);
+        Assert.Equal(PixPayload.CreateStatic(EvpKey, "Jose de Ribamar", "Fortaleza").WithCity("Fortaleza", uppercase: true).Build().ToString(), brCode);
     }
 
     [Theory]
     [InlineData("")]                           // empty
-    [InlineData("   ")]                        // spaces only
+    [InlineData("Foo漢Bar")]                    // characters outside the ASCII set
     [InlineData("Foo Bar!")]                   // punctuation outside the allowed set
     [InlineData("Ægir Industries")]            // Æ has no single-letter ASCII base
     [InlineData("Foo\u0000Bar")]               // control character
@@ -338,7 +338,7 @@ public sealed class PixPayloadTests
     [Fact]
     public void Accented_Names_And_Cities_Are_Normalized_Not_Rejected()
     {
-        string brCode = PixPayload.CreateStatic(EvpKey, "José de Ó, Êle", "Goiânia")
+        string brCode = PixPayload.CreateStatic(EvpKey, "José de Ó e Êle", "Goiânia")
             .WithName("ÁBkçdFUÎP", uppercase: true)
             .Build()
             .ToString();
@@ -410,7 +410,7 @@ public sealed class PixPayloadTests
         { Replace(StaticVector, StaticMai, Mai(Oracles.Tlv("00", "br.gov.visa.pix") + KeySub)), "carries the 'br.gov.bcb.pix' GUI" },
         { Replace(StaticVector, StaticMai, Mai(Oracles.Tlv("00", "br.gov.bcb.pix." + new string('a', 18)) + KeySub)), "32-character limit" },
         { Replace(StaticVector, StaticMai, Mai(GuiTlv + Oracles.Tlv("01", "1234567890"))), "the Pix key (sub-field 01)" },
-        { Replace(StaticVector, StaticMai, Mai(GuiTlv + KeySub + Oracles.Tlv("25", "pix.example.com/8b3da2f39a4140d1a91abd93113bd441"))), "cannot carry both" },
+        { Replace(StaticVector, StaticMai, Mai(GuiTlv + Oracles.Tlv("01", "11144477735") + Oracles.Tlv("25", "pix.example.com/a"))), "cannot carry both" },
         { Replace(StaticVector, StaticMai, Mai(GuiTlv)), "must carry either" },
         { Replace(StaticVector, StaticMai, Mai(GuiTlv + Oracles.Tlv("02", ""))), "1..72 characters" },
         { Replace(StaticVector, StaticMai, Mai(GuiTlv + Oracles.Tlv("02", new string('d', 73)))), "1..72 characters" },
@@ -442,7 +442,7 @@ public sealed class PixPayloadTests
         { Replace(StaticVector, "62070503***", Oracles.Tlv("62", "0503***x")), "not fully consumed" },
 
         // Unreserved templates and duplicates.
-        { Append(StaticVector, Oracles.Tlv("80", "AAAA")), "unreserved template (80-99)" },
+        { Append(StaticVector, Oracles.Tlv("80", Oracles.Tlv("01", "AAAA"))), "unreserved template (80-99)" },
         { Append(StaticVector, "5303986"), "appears twice" },
 
         // Location rules for dynamic payloads.
@@ -525,7 +525,7 @@ public sealed class PixPayloadTests
         string payload = Replace(
             Append(DynamicVector, Oracles.Tlv("54", "100.50")),
             "62070503***",
-            Oracles.Tlv("62", "0503***" + Oracles.Tlv("05", "PEDIDO123")));
+            Oracles.Tlv("62", Oracles.Tlv("05", "PEDIDO123")));
         PixPayload parsed = PixPayload.Parse(payload);
         Assert.True(parsed.IsDynamic);
         Assert.Equal(100.50m, parsed.Amount);
@@ -587,7 +587,7 @@ public sealed class PixPayloadTests
     private static string ExtractField(PixPayloadBuilder builder, string id)
     {
         PixPayload payload = builder.Build();
-        PixTlv field = Assert.Single(payload.Fields.Where(field => field.Id == id));
+        PixTlv field = Assert.Single(payload.Fields, field => field.Id == id);
         return field.Encode();
     }
 }

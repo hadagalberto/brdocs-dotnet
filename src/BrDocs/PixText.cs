@@ -30,7 +30,7 @@ internal static class PixText
     /// characters — ASCII letters, digits and spaces.
     /// </summary>
     /// <param name="source">The raw merchant name or city text.</param>
-    /// <param name="maxLength">1 for the maximum accepted length (25 for names, 15 for cities).</param>
+    /// <param name="maxLength">The maximum accepted length (25 for names, 15 for cities).</param>
     /// <param name="uppercase">When <see langword="true"/>, ASCII letters are uppercased.</param>
     /// <param name="destination">The destination buffer; sized to <paramref name="maxLength"/>.</param>
     /// <param name="written">The number of characters written; <c>0</c> when <see langword="false"/>.</param>

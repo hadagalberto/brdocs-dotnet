@@ -127,7 +127,9 @@ public static class PixKey
         }
         foreach (char c in key)
         {
-            if (!char.IsAsciiLetterOrDigit(c))
+            // A canonical DICT key carries uppercase letters only (the document type itself
+            // accepts lowercase input and uppercases it, but a BR Code field 26-01 must be canonical).
+            if (!char.IsAsciiDigit(c) && c is not (>= 'A' and <= 'Z'))
             {
                 return false;
             }
@@ -357,6 +359,11 @@ public static class PixKey
             }
             if (!char.IsAsciiLetterOrDigit(c) && c != '-')
             {
+                return false;
+            }
+            if (labelLength == 0 && c == '-')
+            {
+                // A label may contain hyphens but may not start with one (RFC 1035 / RFC 3986).
                 return false;
             }
             if (++labelLength > 63)

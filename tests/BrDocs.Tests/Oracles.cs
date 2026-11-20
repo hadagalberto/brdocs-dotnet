@@ -621,12 +621,8 @@ internal static class Oracles
             string value = text.Substring(position + 4, length);
             int numericId = int.Parse(id, CultureInfo.InvariantCulture);
             bool isTemplate = numericId is >= 26 and <= 51 or 62 or (>= 80 and <= 99);
-            if (isTemplate)
+            if (isTemplate && allowTemplates)
             {
-                if (!allowTemplates)
-                {
-                    return null;
-                }
                 List<TlvNode>? children = ParseLevelOracle(value, allowTemplates: false);
                 if (children is null)
                 {
@@ -793,7 +789,7 @@ internal static class Oracles
                 && !domain.EndsWith('-') && !domain.Contains("..", StringComparison.Ordinal)
                 && domain.Split('.')
                     .All(label => label.Length is > 0 and <= 63 && !label.StartsWith('-')
-                        && !label.EndsWith('-') && label.All(char.IsLetterOrDigit))
+                        && !label.EndsWith('-') && label.All(c => char.IsLetterOrDigit(c) || c == '-'))
                 && domain.Split('.').Last().Length >= 2;
             return localOk && domainOk;
         }

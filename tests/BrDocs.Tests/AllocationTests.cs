@@ -556,7 +556,7 @@ public sealed class AllocationTests
     [Fact]
     public void PixPayload_IsValid_Invalid_Does_Not_Allocate()
     {
-        Assert.Equal(0, MeasureAllocations(() => PixPayload.IsValid(PixStaticVector[..^1])));
+        Assert.Equal(0, MeasureAllocations(() => PixPayload.IsValid(PixStaticVector.AsSpan()[..^1])));
     }
 
     [Fact]

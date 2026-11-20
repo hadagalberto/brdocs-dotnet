@@ -8,6 +8,8 @@ namespace BrDocs.Tests;
 /// </summary>
 public sealed class PixTlvTests
 {
+    private static readonly string[] s_specFieldIds = { "00", "26", "52", "53", "58", "59", "60", "62" };
+
     [Theory]
     [InlineData("00", "01", "000201")]
     [InlineData("59", "Fulano de Tal", "5913Fulano de Tal")]
@@ -150,7 +152,7 @@ public sealed class PixTlvTests
         IReadOnlyList<PixTlv> fields = PixTlv.ParseSequence(
             "00020126580014br.gov.bcb.pix0136123e4567-e12b-12d1-a456-4266554400005204000053039865802BR5913Fulano de Tal6008BRASILIA62070503***");
         string[] ids = fields.Select(field => field.Id).ToArray();
-        Assert.Equal(new[] { "00", "26", "52", "53", "58", "59", "60", "62" }, ids);
+        Assert.Equal(s_specFieldIds, ids);
         Assert.Equal("01", fields[0].Value);
         Assert.Equal(2, fields[1].Children!.Count);
         Assert.Equal("0000", fields[2].Value);
@@ -215,9 +217,10 @@ public sealed class PixTlvTests
         PixTlv a = PixTlv.Create("00", "01");
         PixTlv b = PixTlv.Create("00", "01");
         PixTlv c = PixTlv.Create("00", "02");
-        PixTlv template1 = PixTlv.CreateTemplate("26", new[] { a, b });
-        PixTlv template2 = PixTlv.CreateTemplate("26", new[] { b, a });
-        PixTlv template3 = PixTlv.CreateTemplate("26", new[] { a, b });
+        PixTlv d = PixTlv.Create("00", "03");
+        PixTlv template1 = PixTlv.CreateTemplate("26", new[] { a, d });
+        PixTlv template2 = PixTlv.CreateTemplate("26", new[] { d, a });
+        PixTlv template3 = PixTlv.CreateTemplate("26", new[] { a, d });
         Assert.Equal(a, b);
         Assert.Equal(a.GetHashCode(), b.GetHashCode());
         Assert.NotEqual(a, c);
@@ -235,7 +238,7 @@ public sealed class PixTlvTests
         {
             PixTlv.Create("01", "***"),
             PixTlv.Create("05", "PEDIDO123456"),
-            PixTlv.Create("50", "custom-value"),
+            PixTlv.CreateChild("50", "custom-value"),
         });
         string encoded = payload.Encode();
         Assert.True(PixTlv.TryParse(encoded, out PixTlv? decoded));
@@ -252,7 +255,8 @@ public sealed class PixTlvTests
         Assert.Equal("01" + "99" + new string('a', 99), bigLeaf.Encode());
         Assert.Equal(bigLeaf, PixTlv.Parse(bigLeaf.Encode()));
 
-        PixTlv bigChild = PixTlv.Create("50", new string('b', 95));
+        // 18 chars for the GUI child + 4 + 77 = 99 chars of template content.
+        PixTlv bigChild = PixTlv.CreateChild("50", new string('b', 77));
         PixTlv bigTemplate = PixTlv.CreateTemplate("80", new[] { PixTlv.Create("00", "br.gov.bcb.pix"), bigChild });
         Assert.Equal(99, bigTemplate.EncodedLength - 4);
         Assert.Equal(bigTemplate, PixTlv.Parse(bigTemplate.Encode()));

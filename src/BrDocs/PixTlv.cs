@@ -85,6 +85,29 @@ public sealed class PixTlv : IEquatable<PixTlv>
     }
 
     /// <summary>
+    /// Creates a leaf data object for use as a <b>child</b> of a template. Nesting is one level
+    /// deep, so a child is always a leaf — even when its ID falls in a template range (e.g. the
+    /// payment-system-specific sub-fields 50–99 of the additional data template 62).
+    /// </summary>
+    /// <param name="id">The two-digit ID.</param>
+    /// <param name="value">The value, at most 99 characters (the empty value is allowed).</param>
+    /// <exception cref="ArgumentNullException"><paramref name="id"/> or <paramref name="value"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="id"/> is not exactly two ASCII digits or the value is longer than 99 characters.
+    /// </exception>
+    public static PixTlv CreateChild(string id, string value)
+    {
+        ArgumentNullException.ThrowIfNull(id);
+        ArgumentNullException.ThrowIfNull(value);
+        ValidateId(id, out _);
+        if (value.Length > 99)
+        {
+            throw new ArgumentException("A data object value holds at most 99 characters (two length digits).", nameof(value));
+        }
+        return new PixTlv(id, value, null, 4 + value.Length);
+    }
+
+    /// <summary>
     /// Creates a template data object (IDs 26–51, 62 or 80–99) from its ordered children. Each
     /// child must be a leaf and the encoded children must fit in 99 characters.
     /// </summary>
@@ -143,7 +166,7 @@ public sealed class PixTlv : IEquatable<PixTlv>
     public static bool TryParse(ReadOnlySpan<char> text, out PixTlv? result)
     {
         result = null;
-        if (!TryDecodeOne(text, out int consumed, out PixTlv? decoded) || consumed != text.Length)
+        if (!TryDecodeOne(text, allowTemplate: true, out int consumed, out PixTlv? decoded) || consumed != text.Length)
         {
             return false;
         }
@@ -274,9 +297,10 @@ public sealed class PixTlv : IEquatable<PixTlv>
 
     /// <summary>
     /// Decodes the first TLV of <paramref name="text"/>: header, bounds, value, and the children
-    /// when the ID is a template.
+    /// when the ID is a template and templates are allowed at this level. Child data objects are
+    /// leaves even when their ID belongs to a template range (nesting is one level deep).
     /// </summary>
-    private static bool TryDecodeOne(ReadOnlySpan<char> text, out int consumed, out PixTlv? decoded)
+    private static bool TryDecodeOne(ReadOnlySpan<char> text, bool allowTemplate, out int consumed, out PixTlv? decoded)
     {
         consumed = 0;
         decoded = null;
@@ -293,7 +317,7 @@ public sealed class PixTlv : IEquatable<PixTlv>
         }
         ReadOnlySpan<char> value = text.Slice(4, length);
         string idText = new string(text[..2]);
-        if (!IsTemplateId(id))
+        if (!allowTemplate || !IsTemplateId(id))
         {
             consumed = 4 + length;
             decoded = new PixTlv(idText, new string(value), null, consumed);
@@ -324,7 +348,7 @@ public sealed class PixTlv : IEquatable<PixTlv>
         int position = 0;
         while (position < text.Length)
         {
-            if (!TryDecodeOne(text[position..], out int consumed, out PixTlv? decoded) || decoded is null)
+            if (!TryDecodeOne(text[position..], allowTemplates, out int consumed, out PixTlv? decoded) || decoded is null)
             {
                 return false;
             }
