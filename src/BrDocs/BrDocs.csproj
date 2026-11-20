@@ -6,12 +6,14 @@
     <Description>
       Production-grade Brazilian document value objects: CPF, CNPJ (numeric and the new alphanumeric
       format, IN RFB nº 2.229/2024), CEP, PIS/PASEP/NIT, Título de Eleitor, CNH, RENAVAM, Placa
-      (legacy + Mercosul) and Telefone BR (ANATEL DDD list, E.164). Span-based, allocation-free
-      validation, culture-invariant formatting, ISpanFormattable/ISpanParsable integration and
-      Generate() helpers for tests and fake data. Zero runtime dependencies; AOT- and
-      trimming-compatible.
+      (legacy + Mercosul), Telefone BR (ANATEL DDD list, E.164) and boletos: the FEBRABAN bank-slip
+      código de barras/linha digitável (44/47 digits, general DV módulo 11, field DVs módulo 10,
+      due-date factor with the 2025-02-22 reset) and arrecadação/convenio codes (44/48 digits,
+      per-block DVs módulo 10 or 11 per the third digit). Span-based, allocation-free validation,
+      culture-invariant formatting, ISpanFormattable/ISpanParsable integration and Generate()
+      helpers for tests and fake data. Zero runtime dependencies; AOT- and trimming-compatible.
     </Description>
-    <PackageTags>brazil;brazilian;cpf;cnpj;cep;pis;pasep;nit;titulo-eleitor;cnh;renavam;placa;mercosul;telefone;ddd;documents;validation;valueobject;brdocs</PackageTags>
+    <PackageTags>brazil;brazilian;cpf;cnpj;cep;pis;pasep;nit;titulo-eleitor;cnh;renavam;placa;mercosul;telefone;ddd;documents;validation;valueobject;brdocs;boleto;febraban;linha-digitavel;codigo-de-barras;arrecadacao;convenio;payments</PackageTags>
     <IsPackable>true</IsPackable>
   </PropertyGroup>
 

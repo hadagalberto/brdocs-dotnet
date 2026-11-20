@@ -230,4 +230,57 @@ public sealed class CultureInvarianceTests
             CultureInfo.CurrentCulture = original;
         }
     }
+
+    [Theory]
+    [MemberData(nameof(ExoticCultures))]
+    public void Boleto_Parsing_And_Formatting_Are_Culture_Invariant(string cultureName)
+    {
+        CultureInfo original = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = new CultureInfo(cultureName);
+            CultureInfo other = CultureInfo.GetCultureInfo("fr-FR");
+
+            const string formatted = "10492.00650 61000.100042 00997.263900 9 89810000021403";
+            Boleto boleto = Boleto.Parse(formatted);
+            Assert.Equal(formatted, boleto.ToString());
+            Assert.Equal("10492006506100010004200997263900989810000021403", boleto.ToString("N"));
+            Assert.Equal("10499898100000214032006561000100040099726390", boleto.ToString("B"));
+            Assert.Equal(formatted, ((IFormattable)boleto).ToString("G", other));
+            Assert.Equal("10492006506100010004200997263900989810000021403", ((IFormattable)boleto).ToString("N", other));
+            Assert.Equal(214.03m, boleto.Amount);
+            Assert.Equal(8981, boleto.DueDateFactor);
+            Assert.Equal(boleto, ParsableHelpers.ParseViaSpanParsable<Boleto>("10492006506100010004200997263900989810000021403".AsSpan(), other));
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = original;
+        }
+    }
+
+    [Theory]
+    [MemberData(nameof(ExoticCultures))]
+    public void Arrecadacao_Parsing_And_Formatting_Are_Culture_Invariant(string cultureName)
+    {
+        CultureInfo original = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = new CultureInfo(cultureName);
+            CultureInfo other = CultureInfo.GetCultureInfo("fr-FR");
+
+            const string formatted = "83860000005-0 09600019000-9 00080178230-9 00034306271-2";
+            Arrecadacao arrecadacao = Arrecadacao.Parse(formatted);
+            Assert.Equal(formatted, arrecadacao.ToString());
+            Assert.Equal("838600000050096000190009000801782309000343062712", arrecadacao.ToString("N"));
+            Assert.Equal("83860000005096000190000008017823000034306271", arrecadacao.ToString("B"));
+            Assert.Equal(formatted, ((IFormattable)arrecadacao).ToString("G", other));
+            Assert.Equal("838600000050096000190009000801782309000343062712", ((IFormattable)arrecadacao).ToString("N", other));
+            Assert.Equal(509.60m, arrecadacao.Value);
+            Assert.Equal(arrecadacao, ParsableHelpers.ParseViaSpanParsable<Arrecadacao>("83860000005096000190000008017823000034306271".AsSpan(), other));
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = original;
+        }
+    }
 }

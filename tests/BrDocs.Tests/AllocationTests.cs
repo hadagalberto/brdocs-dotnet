@@ -424,4 +424,103 @@ public sealed class AllocationTests
         Assert.Equal(0, MeasureAllocations(() => phone.Ddd == 11));
         Assert.Equal(0, MeasureAllocations(() => phone.IsMobile));
     }
+
+    // ---- Boleto -------------------------------------------------------------
+
+    [Fact]
+    public void Boleto_IsValid_Barcode_Does_Not_Allocate()
+    {
+        Assert.Equal(0, MeasureAllocations(() => Boleto.IsValid("10499898100000214032006561000100040099726390")));
+    }
+
+    [Fact]
+    public void Boleto_IsValid_Formatted_Linha_Does_Not_Allocate()
+    {
+        Assert.Equal(0, MeasureAllocations(() => Boleto.IsValid("10492.00650 61000.100042 00997.263900 9 89810000021403")));
+    }
+
+    [Fact]
+    public void Boleto_IsValid_Invalid_Does_Not_Allocate()
+    {
+        Assert.Equal(0, MeasureAllocations(() => Boleto.IsValid("10498898100000214032006561000100040099726390")));
+    }
+
+    [Fact]
+    public void Boleto_TryParse_Does_Not_Allocate()
+    {
+        Assert.Equal(0, MeasureAllocations(() => Boleto.TryParse("10492.00650 61000.100042 00997.263900 9 89810000021403", out _)));
+    }
+
+    [Fact]
+    public void Boleto_TryFormat_Does_Not_Allocate()
+    {
+        Boleto boleto = Boleto.Parse("10499898100000214032006561000100040099726390");
+        char[] buffer = new char[54];
+        Assert.Equal(0, MeasureAllocations(() => boleto.TryFormat(buffer, out _, "G", null)));
+        Assert.Equal(0, MeasureAllocations(() => boleto.TryFormat(buffer, out _, "N", null)));
+        Assert.Equal(0, MeasureAllocations(() => boleto.TryFormat(buffer, out _, "B", null)));
+    }
+
+    [Fact]
+    public void Boleto_Properties_Do_Not_Allocate()
+    {
+        Boleto boleto = Boleto.Parse("10499898100000214032006561000100040099726390");
+        Assert.Equal(0, MeasureAllocations(() => boleto.BankCode == 104));
+        Assert.Equal(0, MeasureAllocations(() => boleto.CurrencyCode == 9));
+        Assert.Equal(0, MeasureAllocations(() => boleto.DueDateFactor == 8981));
+        Assert.Equal(0, MeasureAllocations(() => boleto.Amount == 214.03m));
+        Assert.Equal(0, MeasureAllocations(() => boleto.DueDate is not null));
+    }
+
+    [Fact]
+    public void Boleto_Fator_Encode_And_Decode_Do_Not_Allocate()
+    {
+        Assert.Equal(0, MeasureAllocations(() => Boleto.Encode(new DateOnly(2030, 1, 1)) == 1000 + 1774));
+        Assert.Equal(0, MeasureAllocations(() => Boleto.TryDecode(1000, new DateOnly(2026, 1, 1), out _)));
+    }
+
+    // ---- Arrecadação ---------------------------------------------------------
+
+    [Fact]
+    public void Arrecadacao_IsValid_Barcode_Does_Not_Allocate()
+    {
+        Assert.Equal(0, MeasureAllocations(() => Arrecadacao.IsValid("83860000005096000190000008017823000034306271")));
+    }
+
+    [Fact]
+    public void Arrecadacao_IsValid_Formatted_Linha_Does_Not_Allocate()
+    {
+        Assert.Equal(0, MeasureAllocations(() => Arrecadacao.IsValid("83860000005-0 09600019000-9 00080178230-9 00034306271-2")));
+    }
+
+    [Fact]
+    public void Arrecadacao_IsValid_Invalid_Does_Not_Allocate()
+    {
+        Assert.Equal(0, MeasureAllocations(() => Arrecadacao.IsValid("83870000005096000190000008017823000034306271")));
+    }
+
+    [Fact]
+    public void Arrecadacao_TryParse_Does_Not_Allocate()
+    {
+        Assert.Equal(0, MeasureAllocations(() => Arrecadacao.TryParse("83860000005-0 09600019000-9 00080178230-9 00034306271-2", out _)));
+    }
+
+    [Fact]
+    public void Arrecadacao_TryFormat_Does_Not_Allocate()
+    {
+        Arrecadacao arrecadacao = Arrecadacao.Parse("83860000005096000190000008017823000034306271");
+        char[] buffer = new char[55];
+        Assert.Equal(0, MeasureAllocations(() => arrecadacao.TryFormat(buffer, out _, "G", null)));
+        Assert.Equal(0, MeasureAllocations(() => arrecadacao.TryFormat(buffer, out _, "N", null)));
+        Assert.Equal(0, MeasureAllocations(() => arrecadacao.TryFormat(buffer, out _, "B", null)));
+    }
+
+    [Fact]
+    public void Arrecadacao_Properties_Do_Not_Allocate()
+    {
+        Arrecadacao arrecadacao = Arrecadacao.Parse("83860000005096000190000008017823000034306271");
+        Assert.Equal(0, MeasureAllocations(() => arrecadacao.Segment == 3));
+        Assert.Equal(0, MeasureAllocations(() => arrecadacao.IsEffectiveValue));
+        Assert.Equal(0, MeasureAllocations(() => arrecadacao.Value == 509.60m));
+    }
 }

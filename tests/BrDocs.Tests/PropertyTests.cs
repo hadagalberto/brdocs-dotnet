@@ -10,6 +10,10 @@ namespace BrDocs.Tests;
 /// </summary>
 public sealed class PropertyTests
 {
+    // The FEBRABAN-documented arrecadação segments and the possible value identifiers.
+    private static readonly int[] s_segments = { 1, 2, 3, 4, 5, 6, 7, 9 };
+    private static readonly int[] s_identifiers = { 6, 7, 8, 9 };
+
     // ---- CPF ---------------------------------------------------------------
 
     [Property(MaxTest = 1_000)]
@@ -713,6 +717,227 @@ public sealed class PropertyTests
         TelefoneBr a = TelefoneBr.Generate(new Random(seedA));
         TelefoneBr b = TelefoneBr.Generate(new Random(seedB));
         Assert.Equal(a.ToString("N") == b.ToString("N"), a == b);
+        Assert.Equal(a == b, a.Equals(b));
+        Assert.Equal(a == b, a.GetHashCode() == b.GetHashCode());
+    }
+
+    // ---- Boleto ------------------------------------------------------------
+
+    [Property(MaxTest = 1_000)]
+    public void Boleto_Matches_The_Oracle_For_Arbitrary_44_Digit_Strings(int seed)
+    {
+        string value = Oracles.RandomString(seed, 44, Oracles.DigitsAlphabet);
+        Assert.Equal(Oracles.IsValidBoleto(value), Boleto.IsValid(value));
+    }
+
+    [Property(MaxTest = 1_000)]
+    public void Boleto_Matches_The_Oracle_For_Arbitrary_47_Digit_Strings(int seed)
+    {
+        string value = Oracles.RandomString(seed, 47, Oracles.DigitsAlphabet);
+        Assert.Equal(Oracles.IsValidBoleto(value), Boleto.IsValid(value));
+    }
+
+    [Property(MaxTest = 1_000)]
+    public void Boleto_Matches_The_Oracle_For_Scattered_Input(int seed)
+    {
+        string core = Oracles.RandomString(seed, 47, Oracles.DigitsAlphabet);
+        string value = Oracles.ScatterIgnored(seed, core);
+        Assert.Equal(Oracles.IsValidBoleto(core), Boleto.IsValid(value));
+    }
+
+    [Property(MaxTest = 1_000)]
+    public void Boleto_Matches_The_Oracle_For_Arbitrary_Garbage(int seed)
+    {
+        string value = Oracles.RandomString(seed, Math.Abs(seed) % 60, Oracles.GarbageAlphabet);
+        Assert.Equal(Oracles.IsValidBoleto(value), Boleto.IsValid(value));
+    }
+
+    [Property(MaxTest = 1_000)]
+    public void Boleto_TryParse_And_IsValid_Always_Agree(int seed)
+    {
+        string value = Oracles.RandomString(seed, Math.Abs(seed) % 60, Oracles.GarbageAlphabet);
+        bool parsed = Boleto.TryParse(value, out Boleto boleto);
+        Assert.Equal(Boleto.IsValid(value), parsed);
+        if (parsed)
+        {
+            Assert.True(Oracles.IsValidBoleto(boleto.Barcode));
+            Assert.Equal(boleto, Boleto.Parse(boleto.Barcode));
+            Assert.Equal(boleto, Boleto.Parse(boleto.LinhaDigitavel));
+            Assert.Equal(boleto, Boleto.Parse(boleto.ToString()));
+            Assert.Equal(boleto, Boleto.Parse(boleto.ToString("B")));
+            Assert.Equal(44, boleto.Barcode.Length);
+            Assert.Equal(47, boleto.LinhaDigitavel.Length);
+            Assert.Equal(25, boleto.FreeField.Length);
+            Assert.InRange(boleto.Amount, 0m, 99_999_999.99m);
+            Assert.InRange(boleto.BankCode, 0, 999);
+            Assert.InRange(boleto.CurrencyCode, 0, 9);
+            Assert.InRange(boleto.DueDateFactor, 0, 9999);
+        }
+        else
+        {
+            Assert.Equal(default, boleto);
+        }
+    }
+
+    [Property(MaxTest = 500)]
+    public void Boleto_Generate_Produces_Valid_Boletos(int seed)
+    {
+        Boleto boleto = Boleto.Generate(new Random(seed));
+        Assert.True(Boleto.IsValid(boleto.Barcode), $"generated {boleto.Barcode} must be valid");
+        Assert.True(Oracles.IsValidBoleto(boleto.Barcode), $"generated {boleto.Barcode} must satisfy the oracle too");
+        Assert.Equal(boleto, Boleto.Parse(boleto.Barcode));
+        Assert.Equal(boleto, Boleto.Parse(boleto.ToString()));
+        Assert.InRange(boleto.BankCode, 1, 999);
+        Assert.Equal(9, boleto.CurrencyCode);
+        DateOnly today = DateOnly.FromDateTime(DateTime.Today);
+        Assert.True(boleto.DueDate is not null);
+        Assert.InRange(boleto.DueDate!.Value.DayNumber, today.DayNumber, today.AddDays(90).DayNumber);
+    }
+
+    [Property(MaxTest = 500)]
+    public void Boleto_Create_Produces_Boletos_The_Oracle_Accepts(int seed)
+    {
+        Random random = new(seed);
+        int bank = random.Next(1, 1000);
+        int currency = random.Next(0, 10);
+        DateOnly dueDate = DateOnly.FromDateTime(DateTime.Today).AddDays(random.Next(-100, 101));
+        decimal amount = random.Next(0, 100_000_000) / 100m;
+        string freeField = Oracles.RandomString(seed + 7, 25, Oracles.DigitsAlphabet);
+
+        Boleto boleto = Boleto.Create(bank, currency, dueDate, amount, freeField);
+
+        Assert.True(Oracles.IsValidBoleto(boleto.Barcode), $"created {boleto.Barcode} must satisfy the oracle");
+        Assert.True(Oracles.IsValidBoleto(boleto.LinhaDigitavel), "the created linha digitável must satisfy the oracle");
+        Assert.Equal(bank, boleto.BankCode);
+        Assert.Equal(currency, boleto.CurrencyCode);
+        Assert.Equal(amount, boleto.Amount);
+        Assert.Equal(freeField, boleto.FreeField);
+        Assert.Equal(Boleto.Encode(dueDate), boleto.DueDateFactor);
+        Assert.Equal(boleto, Boleto.Parse(boleto.Barcode));
+        Assert.Equal(boleto, Boleto.Parse(boleto.LinhaDigitavel));
+        Assert.Equal(boleto, Boleto.Parse(boleto.ToString()));
+    }
+
+    [Property(MaxTest = 500)]
+    public void Boleto_Equality_Follows_The_Barcode(int seedA, int seedB)
+    {
+        Boleto a = Boleto.Generate(new Random(seedA));
+        Boleto b = Boleto.Generate(new Random(seedB));
+        Assert.Equal(a.Barcode == b.Barcode, a == b);
+        Assert.Equal(a == b, a.Equals(b));
+        Assert.Equal(a == b, a.GetHashCode() == b.GetHashCode());
+    }
+
+    [Property(MaxTest = 500)]
+    public void Boleto_Fator_Encode_Matches_The_Oracle(int seed)
+    {
+        Random random = new(seed);
+        DateOnly dueDate = DateOnly.FromDayNumber(random.Next(new DateOnly(1997, 10, 8).DayNumber, new DateOnly(2100, 1, 1).DayNumber));
+        Assert.Equal(Oracles.EncodeFator(dueDate), Boleto.Encode(dueDate));
+    }
+
+    [Property(MaxTest = 500)]
+    public void Boleto_Fator_TryDecode_Matches_The_Oracle(int seed)
+    {
+        Random random = new(seed);
+        int factor = random.Next(0, 10_000);
+        DateOnly reference = DateOnly.FromDayNumber(random.Next(new DateOnly(2000, 1, 1).DayNumber, new DateOnly(2060, 1, 1).DayNumber));
+        bool oracleDecoded = Oracles.TryDecodeFator(factor, reference, out DateOnly oracleDate);
+        Assert.Equal(oracleDecoded, Boleto.TryDecode(factor, reference, out DateOnly decoded));
+        Assert.Equal(oracleDate, decoded);
+    }
+
+    [Property(MaxTest = 500)]
+    public void Boleto_Fator_Encode_Decode_Round_Trips(int seed)
+    {
+        Random random = new(seed);
+        DateOnly dueDate = DateOnly.FromDayNumber(random.Next(new DateOnly(1997, 10, 8).DayNumber, new DateOnly(2060, 1, 1).DayNumber));
+        int factor = Boleto.Encode(dueDate);
+        Assert.InRange(factor, 1, 9999);
+        Assert.True(Boleto.TryDecode(factor, dueDate, out DateOnly decoded), $"factor {factor} must resolve against {dueDate}");
+        Assert.Equal(dueDate, decoded);
+        Assert.Equal(dueDate, Boleto.Decode(factor, dueDate));
+    }
+
+    // ---- Arrecadação ------------------------------------------------------
+
+    [Property(MaxTest = 1_000)]
+    public void Arrecadacao_Matches_The_Oracle_For_Arbitrary_44_Digit_Strings(int seed)
+    {
+        string value = Oracles.RandomString(seed, 44, Oracles.DigitsAlphabet);
+        Assert.Equal(Oracles.IsValidArrecadacao(value), Arrecadacao.IsValid(value));
+    }
+
+    [Property(MaxTest = 1_000)]
+    public void Arrecadacao_Matches_The_Oracle_For_Arbitrary_48_Digit_Strings(int seed)
+    {
+        string value = Oracles.RandomString(seed, 48, Oracles.DigitsAlphabet);
+        Assert.Equal(Oracles.IsValidArrecadacao(value), Arrecadacao.IsValid(value));
+    }
+
+    [Property(MaxTest = 1_000)]
+    public void Arrecadacao_Matches_The_Oracle_For_Scattered_Input(int seed)
+    {
+        string core = Oracles.RandomString(seed, 48, Oracles.DigitsAlphabet);
+        string value = Oracles.ScatterIgnored(seed, core);
+        Assert.Equal(Oracles.IsValidArrecadacao(core), Arrecadacao.IsValid(value));
+    }
+
+    [Property(MaxTest = 1_000)]
+    public void Arrecadacao_Matches_The_Oracle_For_Arbitrary_Garbage(int seed)
+    {
+        string value = Oracles.RandomString(seed, Math.Abs(seed) % 60, Oracles.GarbageAlphabet);
+        Assert.Equal(Oracles.IsValidArrecadacao(value), Arrecadacao.IsValid(value));
+    }
+
+    [Property(MaxTest = 1_000)]
+    public void Arrecadacao_TryParse_And_IsValid_Always_Agree(int seed)
+    {
+        string value = Oracles.RandomString(seed, Math.Abs(seed) % 60, Oracles.GarbageAlphabet);
+        bool parsed = Arrecadacao.TryParse(value, out Arrecadacao arrecadacao);
+        Assert.Equal(Arrecadacao.IsValid(value), parsed);
+        if (parsed)
+        {
+            Assert.True(Oracles.IsValidArrecadacao(arrecadacao.Barcode));
+            Assert.Equal(arrecadacao, Arrecadacao.Parse(arrecadacao.Barcode));
+            Assert.Equal(arrecadacao, Arrecadacao.Parse(arrecadacao.LinhaDigitavel));
+            Assert.Equal(arrecadacao, Arrecadacao.Parse(arrecadacao.ToString()));
+            Assert.Equal(arrecadacao, Arrecadacao.Parse(arrecadacao.ToString("B")));
+            Assert.Equal(44, arrecadacao.Barcode.Length);
+            Assert.Equal(48, arrecadacao.LinhaDigitavel.Length);
+            Assert.Equal(25, arrecadacao.FreeField.Length);
+            Assert.Contains((int)arrecadacao.ValueType, s_identifiers);
+            Assert.Equal(arrecadacao.IsEffectiveValue, arrecadacao.Value is not null);
+        }
+        else
+        {
+            Assert.Equal(default, arrecadacao);
+        }
+    }
+
+    [Property(MaxTest = 500)]
+    public void Arrecadacao_Generate_Produces_Valid_Codes(int seed)
+    {
+        Arrecadacao arrecadacao = Arrecadacao.Generate(new Random(seed));
+        Assert.True(Arrecadacao.IsValid(arrecadacao.Barcode), $"generated {arrecadacao.Barcode} must be valid");
+        Assert.True(Oracles.IsValidArrecadacao(arrecadacao.Barcode), $"generated {arrecadacao.Barcode} must satisfy the oracle too");
+        Assert.Equal(arrecadacao, Arrecadacao.Parse(arrecadacao.Barcode));
+        Assert.Equal(arrecadacao, Arrecadacao.Parse(arrecadacao.ToString()));
+        Assert.Contains(arrecadacao.Segment, s_segments);
+        Assert.Contains((int)arrecadacao.ValueType, s_identifiers);
+        Assert.Equal(arrecadacao.IsEffectiveValue, arrecadacao.Value is not null);
+        if (arrecadacao.Value is not null)
+        {
+            Assert.InRange(arrecadacao.Value.Value, 0m, 99_999_999.99m);
+        }
+    }
+
+    [Property(MaxTest = 500)]
+    public void Arrecadacao_Equality_Follows_The_Barcode(int seedA, int seedB)
+    {
+        Arrecadacao a = Arrecadacao.Generate(new Random(seedA));
+        Arrecadacao b = Arrecadacao.Generate(new Random(seedB));
+        Assert.Equal(a.Barcode == b.Barcode, a == b);
         Assert.Equal(a == b, a.Equals(b));
         Assert.Equal(a == b, a.GetHashCode() == b.GetHashCode());
     }

@@ -26,6 +26,8 @@ public class DocumentsBenchmarks
     private readonly Placa _mercosulPlaca = Placa.Parse("ABC1D23");
     private readonly TelefoneBr _mobile = TelefoneBr.Parse("11912345678");
     private readonly TelefoneBr _fixedLine = TelefoneBr.Parse("1131234567");
+    private readonly Boleto _boleto = Boleto.Parse("10499898100000214032006561000100040099726390");
+    private readonly Arrecadacao _arrecadacao = Arrecadacao.Parse("83860000005096000190000008017823000034306271");
 
     private readonly string _validCpfFormatted = "111.444.777-35";
     private readonly string _validCpfRaw = "11144477735";
@@ -47,8 +49,15 @@ public class DocumentsBenchmarks
     private readonly string _validMobileE164 = "+5511912345678";
     private readonly string _invalidMobile = "11712345678";
     private readonly string _validFixedDisplay = "(11) 3123-4567";
+    private readonly string _validBoletoBarcode = "10499898100000214032006561000100040099726390";
+    private readonly string _validBoletoLinhaFormatted = "10492.00650 61000.100042 00997.263900 9 89810000021403";
+    private readonly string _invalidBoletoBarcode = "10498898100000214032006561000100040099726390";
+    private readonly string _validArrecadacaoBarcode = "83860000005096000190000008017823000034306271";
+    private readonly string _validArrecadacaoFormatted = "83860000005-0 09600019000-9 00080178230-9 00034306271-2";
+    private readonly string _invalidArrecadacaoBarcode = "83870000005096000190000008017823000034306271";
 
     private readonly char[] _buffer = new char[18];
+    private readonly char[] _bigBuffer = new char[55];
 
     // ---- CPF ----
 
@@ -134,4 +143,28 @@ public class DocumentsBenchmarks
     [Benchmark] public string TelefoneBrToE164() => _mobile.ToE164();
     [Benchmark] public string TelefoneBrSubscriber() => _fixedLine.Subscriber;
     [Benchmark] public TelefoneBr TelefoneBrGenerate() => TelefoneBr.Generate();
+
+    // ---- Boleto (bank slip) ----
+
+    [Benchmark] public bool BoletoIsValidBarcode() => Boleto.IsValid(_validBoletoBarcode);
+    [Benchmark] public bool BoletoIsValidFormattedLinha() => Boleto.IsValid(_validBoletoLinhaFormatted);
+    [Benchmark] public bool BoletoIsValidInvalid() => Boleto.IsValid(_invalidBoletoBarcode);
+    [Benchmark] public bool BoletoTryParseFormattedLinha() => Boleto.TryParse(_validBoletoLinhaFormatted, out _);
+    [Benchmark] public string BoletoToStringFormatted() => _boleto.ToString();
+    [Benchmark] public string BoletoBarcode() => _boleto.Barcode;
+    [Benchmark] public bool BoletoTryFormatFormatted() => _boleto.TryFormat(_bigBuffer, out _, "G", null);
+    [Benchmark] public decimal BoletoAmount() => _boleto.Amount;
+    [Benchmark] public int BoletoFatorEncode() => Boleto.Encode(new DateOnly(2030, 6, 15));
+    [Benchmark] public Boleto BoletoGenerate() => Boleto.Generate();
+
+    // ---- Arrecadação / convênio ----
+
+    [Benchmark] public bool ArrecadacaoIsValidBarcode() => Arrecadacao.IsValid(_validArrecadacaoBarcode);
+    [Benchmark] public bool ArrecadacaoIsValidFormattedLinha() => Arrecadacao.IsValid(_validArrecadacaoFormatted);
+    [Benchmark] public bool ArrecadacaoIsValidInvalid() => Arrecadacao.IsValid(_invalidArrecadacaoBarcode);
+    [Benchmark] public bool ArrecadacaoTryParseFormattedLinha() => Arrecadacao.TryParse(_validArrecadacaoFormatted, out _);
+    [Benchmark] public string ArrecadacaoToStringFormatted() => _arrecadacao.ToString();
+    [Benchmark] public bool ArrecadacaoTryFormatFormatted() => _arrecadacao.TryFormat(_bigBuffer, out _, "G", null);
+    [Benchmark] public decimal? ArrecadacaoValue() => _arrecadacao.Value;
+    [Benchmark] public Arrecadacao ArrecadacaoGenerate() => Arrecadacao.Generate();
 }

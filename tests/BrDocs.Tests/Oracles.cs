@@ -284,6 +284,190 @@ internal static class Oracles
         return national[2] is >= '2' and <= '6';
     }
 
+    // ---- Boleto bancário (FEBRABAN cobrança) -------------------------------
+
+    /// <summary>
+    /// Oracle for <see cref="Boleto"/>: the 44-digit código de barras or the 47-digit linha
+    /// digitável, with the field DVs (módulo 10), the general DV (módulo 11 with the
+    /// "0, 1, 10, 11 → 1" rule) and the barcode reassembly implemented with plain strings.
+    /// </summary>
+    internal static bool IsValidBoleto(string? text)
+    {
+        if (!TryNormalizeFEBRABAN(text, out string s) || s.Length is not (44 or 47))
+        {
+            return false;
+        }
+        return s.Length == 44 ? BankBarcodeIsValid(s) : BankLinhaIsValid(s);
+    }
+
+    private static bool BankBarcodeIsValid(string barcode)
+        => BankDvOracle(barcode[..4] + barcode[5..]) == barcode[4] - '0';
+
+    private static bool BankLinhaIsValid(string linha)
+    {
+        if (Mod10Oracle(linha[..9]) != linha[9] - '0'
+            || Mod10Oracle(linha.Substring(10, 10)) != linha[20] - '0'
+            || Mod10Oracle(linha.Substring(21, 10)) != linha[31] - '0')
+        {
+            return false;
+        }
+        string barcode = linha[..4] + linha[32]
+            + linha.Substring(33, 14)
+            + linha.Substring(4, 5)
+            + linha.Substring(10, 10)
+            + linha.Substring(21, 10);
+        return BankDvOracle(barcode[..4] + barcode[5..]) == barcode[4] - '0';
+    }
+
+    /// <summary>
+    /// Oracle for <see cref="Boleto.Encode(DateOnly)"/>: days since 1997-10-07, restarting at
+    /// 1000 on 2025-02-22 and repeating every 9000 factors.
+    /// </summary>
+    internal static int EncodeFator(DateOnly dueDate)
+    {
+        var resetDate = new DateOnly(2025, 2, 22);
+        if (dueDate < resetDate)
+        {
+            return dueDate.DayNumber - new DateOnly(1997, 10, 7).DayNumber;
+        }
+        return 1000 + ((dueDate.DayNumber - resetDate.DayNumber) % 9000);
+    }
+
+    /// <summary>
+    /// Oracle for <see cref="Boleto.TryDecode(int, DateOnly, out DateOnly)"/>: enumerates the
+    /// candidate date of every cycle, keeps the ones inside the [-3000, +5500] day window and
+    /// picks the closest to the reference.
+    /// </summary>
+    internal static bool TryDecodeFator(int factor, DateOnly reference, out DateOnly dueDate)
+    {
+        dueDate = default;
+        if (factor is < 1 or > 9999)
+        {
+            return false;
+        }
+        var candidates = new List<DateOnly> { DateOnly.FromDayNumber(new DateOnly(1997, 10, 7).DayNumber + factor) };
+        if (factor >= 1000)
+        {
+            int cycleStart = new DateOnly(2025, 2, 22).DayNumber - 1000;
+            for (int cycle = 0; ; cycle++)
+            {
+                int day = cycleStart + 9000 * cycle + factor;
+                if (day > reference.DayNumber + 5500)
+                {
+                    break;
+                }
+                candidates.Add(DateOnly.FromDayNumber(day));
+            }
+        }
+        DateOnly? best = candidates
+            .Where(d => d.DayNumber >= reference.DayNumber - 3000 && d.DayNumber <= reference.DayNumber + 5500)
+            .OrderBy(d => Math.Abs(d.DayNumber - reference.DayNumber))
+            .Cast<DateOnly?>()
+            .FirstOrDefault();
+        if (best is null)
+        {
+            return false;
+        }
+        dueDate = best.Value;
+        return true;
+    }
+
+    // ---- Arrecadação / convênio ---------------------------------------------
+
+    /// <summary>
+    /// Oracle for <see cref="Arrecadacao"/>: the 44-digit código de barras or the 48-digit
+    /// linha digitável of four 11-digit blocks, with per-block DVs and the general DV selected
+    /// by the third digit (6/7 → módulo 10, 8/9 → módulo 11 with the "0/1 → 0, 10 → 1" rule).
+    /// </summary>
+    internal static bool IsValidArrecadacao(string? text)
+    {
+        if (!TryNormalizeFEBRABAN(text, out string s) || s.Length is not (44 or 48))
+        {
+            return false;
+        }
+        if (s[0] != '8' || s[2] is < '6' or > '9')
+        {
+            return false;
+        }
+        bool mod11 = s[2] is '8' or '9';
+        string barcode;
+        if (s.Length == 44)
+        {
+            barcode = s;
+        }
+        else
+        {
+            var blocks = new List<string>();
+            for (int block = 0; block < 4; block++)
+            {
+                string digits = s.Substring(block * 12, 11);
+                int expected = mod11 ? ArrDvOracle(digits) : Mod10Oracle(digits);
+                if (expected != s[block * 12 + 11] - '0')
+                {
+                    return false;
+                }
+                blocks.Add(digits);
+            }
+            barcode = string.Concat(blocks[0], blocks[1], blocks[2], blocks[3]);
+        }
+        string dv43 = barcode[..3] + barcode[4..];
+        int general = mod11 ? ArrDvOracle(dv43) : Mod10Oracle(dv43);
+        return general == barcode[3] - '0';
+    }
+
+    /// <summary>Módulo 10, computed left-to-right with a distance-derived weight.</summary>
+    private static int Mod10Oracle(string digits)
+    {
+        int sum = 0;
+        for (int i = 0; i < digits.Length; i++)
+        {
+            int product = (digits[i] - '0') * ((digits.Length - i) % 2 == 1 ? 2 : 1);
+            sum += (product / 10) + (product % 10);
+        }
+        return (10 - sum % 10) % 10;
+    }
+
+    /// <summary>Módulo 11 remainder, computed left-to-right with a LINQ-weighted sum.</summary>
+    private static int Mod11RemainderOracle(string digits)
+        => digits.Select((c, i) => (c - '0') * (((digits.Length - 1 - i) % 8) + 2)).Sum() % 11;
+
+    private static int BankDvOracle(string digits)
+    {
+        int dv = 11 - Mod11RemainderOracle(digits);
+        return dv > 9 ? 1 : dv;
+    }
+
+    private static int ArrDvOracle(string digits)
+    {
+        int remainder = Mod11RemainderOracle(digits);
+        return remainder <= 1 ? 0 : 11 - remainder;
+    }
+
+    /// <summary>Strips the ignored punctuation and requires ASCII digits only.</summary>
+    private static bool TryNormalizeFEBRABAN(string? text, out string digits)
+    {
+        digits = string.Empty;
+        if (text is null)
+        {
+            return false;
+        }
+        var builder = new StringBuilder();
+        foreach (char c in text)
+        {
+            if (c is '.' or '-' or '/' or ' ')
+            {
+                continue;
+            }
+            if (c is < '0' or > '9')
+            {
+                return false;
+            }
+            builder.Append(c);
+        }
+        digits = builder.ToString();
+        return true;
+    }
+
     /// <summary>Deterministically derives a string of <paramref name="length"/> chars from <paramref name="seed"/>.</summary>
     internal static string RandomString(int seed, int length, string alphabet)
     {
