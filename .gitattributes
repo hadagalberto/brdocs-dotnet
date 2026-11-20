@@ -1,7 +1,18 @@
-# Normalize line endings: the repository stores LF; checkouts follow platform convention.
-* text=auto
+# Normalize line endings in the repository to LF on every platform. Checkouts on
+# Windows may still use CRLF unless core.autocrlf=false; .editorconfig pins the
+# formatter to LF so formatting checks behave identically on every OS.
+* text=auto eol=lf
 
-# Binary files (never normalize)
+# Byte-exact fixtures and generated/compiled artifacts: never normalize.
+*.bin -text
+*.dat -text
 *.png binary
 *.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.dll binary
+*.exe binary
+*.nupkg binary
 *.snupkg binary

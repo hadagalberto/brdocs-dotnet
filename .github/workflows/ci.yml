@@ -7,9 +7,12 @@ on:
   workflow_dispatch:
 
 env:
+  # Deterministic builds + SourceLink on every OS in the matrix.
+  CI: true
   DOTNET_NOLOGO: true
   DOTNET_CLI_TELEMETRY_OPTOUT: true
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  DOTNET_CLI_UI_LANGUAGE: en
 
 jobs:
   build-test-pack:
@@ -46,6 +49,7 @@ jobs:
           dotnet pack src/BrDocs.DataAnnotations/BrDocs.DataAnnotations.csproj --no-build --configuration Release --output ./artifacts
           dotnet pack src/BrDocs.FluentValidation/BrDocs.FluentValidation.csproj --no-build --configuration Release --output ./artifacts
           dotnet pack src/BrDocs.Json/BrDocs.Json.csproj --no-build --configuration Release --output ./artifacts
+          dotnet pack src/BrDocs.QrCode/BrDocs.QrCode.csproj --no-build --configuration Release --output ./artifacts
 
       - name: Upload package artifacts
         if: matrix.os == 'ubuntu-latest'

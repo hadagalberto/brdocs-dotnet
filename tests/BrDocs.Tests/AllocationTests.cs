@@ -7,41 +7,47 @@ namespace BrDocs.Tests;
 /// <c>TryParse</c> and <c>TryFormat</c> must not allocate anything on the GC heap.
 /// </summary>
 /// <remarks>
-/// Test parallelization is disabled for the whole assembly (see TestAssemblyInfo.cs) so that
-/// <see cref="GC.GetTotalAllocatedBytes"/> measures only this suite's allocations.
+/// Determinism rules for this suite (a cold-run allocation test once flaked on net8.0):
+/// <list type="bullet">
+/// <item><description>Only <see cref="GC.GetAllocatedBytesForCurrentThread"/> is used. It counts
+/// exactly the allocations performed by this thread, so unrelated threads in the xUnit host,
+/// the finalizer thread and background tiered-JIT work cannot pollute a measurement.</description></item>
+/// <item><description>The measured call is warmed up thousands of times on the very same thread
+/// before any counter is read. That puts static initialization and tiered compilation into a
+/// settled state; the test never depends on which tier happened to be active on the first call.</description></item>
+/// <item><description>Every window measures thousands of iterations, so even a single small
+/// allocation per call would produce a delta far above zero. The smallest of several windows is
+/// reported and a perfectly clean window short-circuits the loop.</description></item>
+/// </list>
+/// Test parallelization is also disabled for the whole assembly (TestAssemblyInfo.cs).
 /// </remarks>
 public sealed class AllocationTests
 {
-    private const int WarmupIterations = 2_000;
-    private const int MeasuredIterations = 5_000;
-    private const int MaxWindows = 12;
+    private const int WarmupIterations = 10_000;
+    private const int MeasuredIterations = 10_000;
+    private const int MaxWindows = 16;
 
     /// <summary>
-    /// Warms the code up (past tiered-JIT tier-up points), then measures short windows and
-    /// returns the smallest delta, stopping early at the first perfectly clean window.
-    /// <see cref="GC.GetTotalAllocatedBytes"/> counts allocations from ALL threads, so foreign
-    /// threads in the test host can dirty a window; a clean window therefore proves the steady
-    /// state allocates nothing, while a genuinely allocating path (any allocation per call is
-    /// at least 5_000 × 24 bytes per window) would dirty every single window and surface the
-    /// smallest delta. The non-precise counter read is used on purpose: forcing a collection
-    /// between windows would itself stimulate finalizer-thread work that pollutes the next
-    /// window.
+    /// Warms the call up, then measures several windows of many iterations using the per-thread
+    /// allocation counter and returns the smallest delta observed.
     /// </summary>
     private static long MeasureAllocations(Func<bool> action)
     {
+        // Static constructors, lazy tables and tier-0 → tier-1 promotion all happen here.
         for (int i = 0; i < WarmupIterations; i++)
         {
             _ = action();
         }
+
         long minimum = long.MaxValue;
         for (int window = 0; window < MaxWindows; window++)
         {
-            long before = GC.GetTotalAllocatedBytes(precise: false);
+            long before = GC.GetAllocatedBytesForCurrentThread();
             for (int i = 0; i < MeasuredIterations; i++)
             {
                 _ = action();
             }
-            long delta = GC.GetTotalAllocatedBytes(precise: false) - before;
+            long delta = GC.GetAllocatedBytesForCurrentThread() - before;
             if (delta == 0)
             {
                 return 0;

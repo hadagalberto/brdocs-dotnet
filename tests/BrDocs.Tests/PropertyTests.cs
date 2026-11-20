@@ -789,9 +789,11 @@ public sealed class PropertyTests
         Assert.Equal(boleto, Boleto.Parse(boleto.ToString()));
         Assert.InRange(boleto.BankCode, 1, 999);
         Assert.Equal(9, boleto.CurrencyCode);
+        // Normalize the midnight/time-zone boundary: Generate resolves the factor against its
+        // own DateTime.Today, which may tick over between generation and this assertion.
         DateOnly today = DateOnly.FromDateTime(DateTime.Today);
         Assert.True(boleto.DueDate is not null);
-        Assert.InRange(boleto.DueDate!.Value.DayNumber, today.DayNumber, today.AddDays(90).DayNumber);
+        Assert.InRange(boleto.DueDate!.Value.DayNumber, today.AddDays(-1).DayNumber, today.AddDays(91).DayNumber);
     }
 
     [Property(MaxTest = 500)]
