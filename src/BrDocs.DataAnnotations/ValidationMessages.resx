@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="CpfInvalid" xml:space="preserve">
+    <value>O campo {0} deve conter um CPF válido.</value>
+  </data>
+  <data name="CnpjInvalid" xml:space="preserve">
+    <value>O campo {0} deve conter um CNPJ válido.</value>
+  </data>
+  <data name="CnpjAlphanumericNotAllowed" xml:space="preserve">
+    <value>O campo {0} deve conter um CNPJ numérico válido; o formato alfanumérico não é permitido.</value>
+  </data>
+  <data name="CpfOrCnpjInvalid" xml:space="preserve">
+    <value>O campo {0} deve conter um CPF ou CNPJ válido.</value>
+  </data>
+  <data name="CepInvalid" xml:space="preserve">
+    <value>O campo {0} deve conter um CEP válido.</value>
+  </data>
+  <data name="PisInvalid" xml:space="preserve">
+    <value>O campo {0} deve conter um PIS/PASEP/NIT válido.</value>
+  </data>
+  <data name="TituloEleitorInvalid" xml:space="preserve">
+    <value>O campo {0} deve conter um Título de Eleitor válido.</value>
+  </data>
+  <data name="CnhInvalid" xml:space="preserve">
+    <value>O campo {0} deve conter uma CNH válida.</value>
+  </data>
+  <data name="RenavamInvalid" xml:space="preserve">
+    <value>O campo {0} deve conter um RENAVAM válido.</value>
+  </data>
+  <data name="PlacaInvalid" xml:space="preserve">
+    <value>O campo {0} deve conter uma placa veicular válida.</value>
+  </data>
+  <data name="TelefoneBrInvalid" xml:space="preserve">
+    <value>O campo {0} deve conter um telefone brasileiro válido.</value>
+  </data>
+  <data name="TelefoneBrMobileOnly" xml:space="preserve">
+    <value>O campo {0} deve conter um telefone celular brasileiro válido.</value>
+  </data>
+  <data name="PixKeyInvalid" xml:space="preserve">
+    <value>O campo {0} deve conter uma chave Pix válida.</value>
+  </data>
+  <data name="LinhaDigitavelInvalid" xml:space="preserve">
+    <value>O campo {0} deve conter uma linha digitável válida.</value>
+  </data>
+</root>

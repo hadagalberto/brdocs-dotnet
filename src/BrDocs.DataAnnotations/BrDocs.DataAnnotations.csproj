@@ -15,4 +15,10 @@
     <ProjectReference Include="..\BrDocs\BrDocs.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Update="ValidationMessages.resx">
+      <LogicalName>BrDocs.DataAnnotations.ValidationMessages.resources</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
 </Project>

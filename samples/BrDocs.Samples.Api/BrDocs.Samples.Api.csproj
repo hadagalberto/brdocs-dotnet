@@ -9,6 +9,9 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\BrDocs\BrDocs.csproj" />
     <ProjectReference Include="..\..\src\BrDocs.DataAnnotations\BrDocs.DataAnnotations.csproj" />
+    <ProjectReference Include="..\..\src\BrDocs.FluentValidation\BrDocs.FluentValidation.csproj" />
+    <ProjectReference Include="..\..\src\BrDocs.Json\BrDocs.Json.csproj" />
+    <ProjectReference Include="..\..\src\BrDocs.QrCode\BrDocs.QrCode.csproj" />
   </ItemGroup>
 
 </Project>

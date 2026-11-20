@@ -19,4 +19,10 @@
     <PackageReference Include="FluentValidation" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Update="ValidationMessages.resx">
+      <LogicalName>BrDocs.FluentValidation.ValidationMessages.resources</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
 </Project>
