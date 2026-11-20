@@ -5,11 +5,13 @@
     <Title>BrDocs — Brazilian documents for .NET</Title>
     <Description>
       Production-grade Brazilian document value objects: CPF, CNPJ (numeric and the new alphanumeric
-      format, IN RFB nº 2.229/2024) and CEP. Span-based, allocation-free validation, culture-invariant
-      formatting, ISpanFormattable/ISpanParsable integration and Generate() helpers for tests and fake
-      data. Zero runtime dependencies; AOT- and trimming-compatible.
+      format, IN RFB nº 2.229/2024), CEP, PIS/PASEP/NIT, Título de Eleitor, CNH, RENAVAM, Placa
+      (legacy + Mercosul) and Telefone BR (ANATEL DDD list, E.164). Span-based, allocation-free
+      validation, culture-invariant formatting, ISpanFormattable/ISpanParsable integration and
+      Generate() helpers for tests and fake data. Zero runtime dependencies; AOT- and
+      trimming-compatible.
     </Description>
-    <PackageTags>brazil;brazilian;cpf;cnpj;cep;documents;validation;valueobject;brdocs</PackageTags>
+    <PackageTags>brazil;brazilian;cpf;cnpj;cep;pis;pasep;nit;titulo-eleitor;cnh;renavam;placa;mercosul;telefone;ddd;documents;validation;valueobject;brdocs</PackageTags>
     <IsPackable>true</IsPackable>
   </PropertyGroup>
 

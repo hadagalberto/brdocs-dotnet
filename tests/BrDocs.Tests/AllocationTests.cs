@@ -165,4 +165,263 @@ public sealed class AllocationTests
         Cep cep = Cep.Parse("01310100");
         Assert.Equal(0, MeasureAllocations(() => cep.Uf is not null));
     }
+
+    // ---- PIS ---------------------------------------------------------------
+
+    [Fact]
+    public void Pis_IsValid_Formatted_Does_Not_Allocate()
+    {
+        Assert.Equal(0, MeasureAllocations(() => Pis.IsValid("120.70458.82-4")));
+    }
+
+    [Fact]
+    public void Pis_IsValid_Raw_Does_Not_Allocate()
+    {
+        Assert.Equal(0, MeasureAllocations(() => Pis.IsValid("12070458824")));
+    }
+
+    [Fact]
+    public void Pis_IsValid_Invalid_Does_Not_Allocate()
+    {
+        Assert.Equal(0, MeasureAllocations(() => Pis.IsValid("120.70458.82-5")));
+    }
+
+    [Fact]
+    public void Pis_IsValid_AllSame_Does_Not_Allocate()
+    {
+        Assert.Equal(0, MeasureAllocations(() => Pis.IsValid("111.11111.11-1")));
+    }
+
+    [Fact]
+    public void Pis_TryParse_Does_Not_Allocate()
+    {
+        Assert.Equal(0, MeasureAllocations(() => Pis.TryParse("120.70458.82-4", out _)));
+    }
+
+    [Fact]
+    public void Pis_TryFormat_Does_Not_Allocate()
+    {
+        Pis pis = Pis.Parse("12070458824");
+        char[] buffer = new char[14];
+        Assert.Equal(0, MeasureAllocations(() => pis.TryFormat(buffer, out _, "G", null)));
+    }
+
+    // ---- Título de Eleitor ------------------------------------------------
+
+    [Fact]
+    public void TituloEleitor_IsValid_Formatted_Does_Not_Allocate()
+    {
+        Assert.Equal(0, MeasureAllocations(() => TituloEleitor.IsValid("1023 8501 06 71")));
+    }
+
+    [Fact]
+    public void TituloEleitor_IsValid_Raw_Does_Not_Allocate()
+    {
+        Assert.Equal(0, MeasureAllocations(() => TituloEleitor.IsValid("102385010671")));
+    }
+
+    [Fact]
+    public void TituloEleitor_IsValid_Invalid_Does_Not_Allocate()
+    {
+        Assert.Equal(0, MeasureAllocations(() => TituloEleitor.IsValid("1234 5678 00 91")));
+    }
+
+    [Fact]
+    public void TituloEleitor_TryParse_Does_Not_Allocate()
+    {
+        Assert.Equal(0, MeasureAllocations(() => TituloEleitor.TryParse("1234 5678 20 97", out _)));
+    }
+
+    [Fact]
+    public void TituloEleitor_TryFormat_Does_Not_Allocate()
+    {
+        TituloEleitor titulo = TituloEleitor.Parse("123456782097");
+        char[] buffer = new char[15];
+        Assert.Equal(0, MeasureAllocations(() => titulo.TryFormat(buffer, out _, "G", null)));
+    }
+
+    [Fact]
+    public void TituloEleitor_UfCode_Does_Not_Allocate()
+    {
+        TituloEleitor titulo = TituloEleitor.Parse("123456782097");
+        Assert.Equal(0, MeasureAllocations(() => titulo.UfCode is >= 1 and <= 28));
+    }
+
+    // ---- CNH ---------------------------------------------------------------
+
+    [Fact]
+    public void Cnh_IsValid_Formatted_Does_Not_Allocate()
+    {
+        Assert.Equal(0, MeasureAllocations(() => Cnh.IsValid("026503064-61")));
+    }
+
+    [Fact]
+    public void Cnh_IsValid_Raw_Does_Not_Allocate()
+    {
+        Assert.Equal(0, MeasureAllocations(() => Cnh.IsValid("02650306461")));
+    }
+
+    [Fact]
+    public void Cnh_IsValid_Invalid_Does_Not_Allocate()
+    {
+        Assert.Equal(0, MeasureAllocations(() => Cnh.IsValid("026503064-60")));
+    }
+
+    [Fact]
+    public void Cnh_IsValid_AllSame_Does_Not_Allocate()
+    {
+        Assert.Equal(0, MeasureAllocations(() => Cnh.IsValid("111111111-11")));
+    }
+
+    [Fact]
+    public void Cnh_TryParse_Does_Not_Allocate()
+    {
+        Assert.Equal(0, MeasureAllocations(() => Cnh.TryParse("026503064-61", out _)));
+    }
+
+    [Fact]
+    public void Cnh_TryFormat_Does_Not_Allocate()
+    {
+        Cnh cnh = Cnh.Parse("02650306461");
+        char[] buffer = new char[12];
+        Assert.Equal(0, MeasureAllocations(() => cnh.TryFormat(buffer, out _, "G", null)));
+    }
+
+    // ---- RENAVAM -----------------------------------------------------------
+
+    [Fact]
+    public void Renavam_IsValid_Formatted_Does_Not_Allocate()
+    {
+        Assert.Equal(0, MeasureAllocations(() => Renavam.IsValid("0063988.4962")));
+    }
+
+    [Fact]
+    public void Renavam_IsValid_Legacy_Does_Not_Allocate()
+    {
+        Assert.Equal(0, MeasureAllocations(() => Renavam.IsValid("639884962")));
+    }
+
+    [Fact]
+    public void Renavam_IsValid_Invalid_Does_Not_Allocate()
+    {
+        Assert.Equal(0, MeasureAllocations(() => Renavam.IsValid("12345678901")));
+    }
+
+    [Fact]
+    public void Renavam_TryParse_Does_Not_Allocate()
+    {
+        Assert.Equal(0, MeasureAllocations(() => Renavam.TryParse("639884962", out _)));
+    }
+
+    [Fact]
+    public void Renavam_TryFormat_Does_Not_Allocate()
+    {
+        Renavam renavam = Renavam.Parse("639884962");
+        char[] buffer = new char[11];
+        Assert.Equal(0, MeasureAllocations(() => renavam.TryFormat(buffer, out _, "G", null)));
+    }
+
+    // ---- Placa -------------------------------------------------------------
+
+    [Fact]
+    public void Placa_IsValid_Legacy_Does_Not_Allocate()
+    {
+        Assert.Equal(0, MeasureAllocations(() => Placa.IsValid("ABC-1234")));
+    }
+
+    [Fact]
+    public void Placa_IsValid_Mercosul_Does_Not_Allocate()
+    {
+        Assert.Equal(0, MeasureAllocations(() => Placa.IsValid("abc1d23")));
+    }
+
+    [Fact]
+    public void Placa_IsValid_Invalid_Does_Not_Allocate()
+    {
+        Assert.Equal(0, MeasureAllocations(() => Placa.IsValid("ABC12D3")));
+    }
+
+    [Fact]
+    public void Placa_TryParse_Does_Not_Allocate()
+    {
+        Assert.Equal(0, MeasureAllocations(() => Placa.TryParse("ABC-1234", out _)));
+    }
+
+    [Fact]
+    public void Placa_TryFormat_Does_Not_Allocate()
+    {
+        Placa placa = Placa.Parse("ABC1234");
+        char[] buffer = new char[8];
+        Assert.Equal(0, MeasureAllocations(() => placa.TryFormat(buffer, out _, "G", null)));
+    }
+
+    [Fact]
+    public void Placa_ToMercosul_Does_Not_Allocate()
+    {
+        Placa legacy = Placa.Parse("ABC1234");
+        Placa mercosul = Placa.Parse("ABC1D23");
+        Assert.Equal(0, MeasureAllocations(() => legacy.ToMercosul().IsMercosul));
+        Assert.Equal(0, MeasureAllocations(() => mercosul.ToMercosul() == mercosul));
+    }
+
+    [Fact]
+    public void Placa_IsMercosul_Does_Not_Allocate()
+    {
+        Placa mercosul = Placa.Parse("ABC1D23");
+        Assert.Equal(0, MeasureAllocations(() => mercosul.IsMercosul));
+    }
+
+    // ---- Telefone BR --------------------------------------------------------
+
+    [Fact]
+    public void TelefoneBr_IsValid_Display_Form_Does_Not_Allocate()
+    {
+        Assert.Equal(0, MeasureAllocations(() => TelefoneBr.IsValid("(11) 91234-5678")));
+    }
+
+    [Fact]
+    public void TelefoneBr_IsValid_E164_Does_Not_Allocate()
+    {
+        Assert.Equal(0, MeasureAllocations(() => TelefoneBr.IsValid("+5511912345678")));
+    }
+
+    [Fact]
+    public void TelefoneBr_IsValid_Bare_Country_Code_Does_Not_Allocate()
+    {
+        Assert.Equal(0, MeasureAllocations(() => TelefoneBr.IsValid("5511987654321")));
+    }
+
+    [Fact]
+    public void TelefoneBr_IsValid_Fixed_Does_Not_Allocate()
+    {
+        Assert.Equal(0, MeasureAllocations(() => TelefoneBr.IsValid("(11) 3123-4567")));
+    }
+
+    [Fact]
+    public void TelefoneBr_IsValid_Invalid_Does_Not_Allocate()
+    {
+        Assert.Equal(0, MeasureAllocations(() => TelefoneBr.IsValid("11712345678")));
+    }
+
+    [Fact]
+    public void TelefoneBr_TryParse_E164_Does_Not_Allocate()
+    {
+        Assert.Equal(0, MeasureAllocations(() => TelefoneBr.TryParse("+55 11 91234-5678", out _)));
+    }
+
+    [Fact]
+    public void TelefoneBr_TryFormat_Does_Not_Allocate()
+    {
+        TelefoneBr phone = TelefoneBr.Parse("11912345678");
+        char[] buffer = new char[15];
+        Assert.Equal(0, MeasureAllocations(() => phone.TryFormat(buffer, out _, "G", null)));
+    }
+
+    [Fact]
+    public void TelefoneBr_Ddd_And_IsMobile_Do_Not_Allocate()
+    {
+        TelefoneBr phone = TelefoneBr.Parse("11912345678");
+        Assert.Equal(0, MeasureAllocations(() => phone.Ddd == 11));
+        Assert.Equal(0, MeasureAllocations(() => phone.IsMobile));
+    }
 }
