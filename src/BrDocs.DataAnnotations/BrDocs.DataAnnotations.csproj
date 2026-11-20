@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>BrDocs.DataAnnotations</PackageId>
+    <Title>BrDocs.DataAnnotations — validation attributes for Brazilian documents</Title>
+    <Description>
+      ASP.NET/Core-compatible validation attributes ([Cpf], [Cnpj], [Cep], ...) that delegate to the
+      BrDocs core value objects. Error messages in pt-BR with overridable resources.
+    </Description>
+    <PackageTags>brazil;cpf;cnpj;cep;validation;dataannotations;brdocs</PackageTags>
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\BrDocs\BrDocs.csproj" />
+  </ItemGroup>
+
+</Project>

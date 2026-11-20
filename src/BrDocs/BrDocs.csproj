@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>BrDocs</PackageId>
+    <Title>BrDocs — Brazilian documents for .NET</Title>
+    <Description>
+      Production-grade Brazilian document value objects: CPF, CNPJ (numeric and the new alphanumeric
+      format, IN RFB nº 2.229/2024) and CEP. Span-based, allocation-free validation, culture-invariant
+      formatting, ISpanFormattable/ISpanParsable integration and Generate() helpers for tests and fake
+      data. Zero runtime dependencies; AOT- and trimming-compatible.
+    </Description>
+    <PackageTags>brazil;brazilian;cpf;cnpj;cep;documents;validation;valueobject;brdocs</PackageTags>
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="all" />
+  </ItemGroup>
+
+</Project>

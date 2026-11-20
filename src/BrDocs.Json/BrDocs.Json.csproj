@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>BrDocs.Json</PackageId>
+    <Title>BrDocs.Json — System.Text.Json converters for Brazilian documents</Title>
+    <Description>
+      System.Text.Json JsonConverter&lt;T&gt; implementations for the BrDocs value objects, with
+      options to serialize formatted or digits-only. Source-generator friendly.
+    </Description>
+    <PackageTags>brazil;cpf;cnpj;cep;json;system.text.json;brdocs</PackageTags>
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\BrDocs\BrDocs.csproj" />
+  </ItemGroup>
+
+</Project>

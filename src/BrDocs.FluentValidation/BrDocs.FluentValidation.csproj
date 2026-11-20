@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>BrDocs.FluentValidation</PackageId>
+    <Title>BrDocs.FluentValidation — FluentValidation rules for Brazilian documents</Title>
+    <Description>
+      IRuleBuilder extensions (MustBeCpf(), MustBeCnpj(), ...) that validate Brazilian documents
+      with the BrDocs core value objects.
+    </Description>
+    <PackageTags>brazil;cpf;cnpj;cep;validation;fluentvalidation;brdocs</PackageTags>
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\BrDocs\BrDocs.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FluentValidation" />
+  </ItemGroup>
+
+</Project>

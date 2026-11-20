@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+
+jobs:
+  build-test-pack:
+    name: build-test-pack (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET (8.0 + 10.0)
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build (warnings as errors)
+        run: dotnet build --no-restore --configuration Release -warnaserror
+
+      - name: Test (net8.0 + net10.0)
+        run: dotnet test --no-build --configuration Release --logger "trx;LogFileName=test-results.trx"
+
+      - name: Pack
+        run: |
+          dotnet pack src/BrDocs/BrDocs.csproj --no-build --configuration Release --output ./artifacts
+          dotnet pack src/BrDocs.DataAnnotations/BrDocs.DataAnnotations.csproj --no-build --configuration Release --output ./artifacts
+          dotnet pack src/BrDocs.FluentValidation/BrDocs.FluentValidation.csproj --no-build --configuration Release --output ./artifacts
+          dotnet pack src/BrDocs.Json/BrDocs.Json.csproj --no-build --configuration Release --output ./artifacts
+
+      - name: Upload package artifacts
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: brdocs-packages
+          path: |
+            artifacts/*.nupkg
+            artifacts/*.snupkg
+          if-no-files-found: error

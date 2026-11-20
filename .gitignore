@@ -1,9 +1,38 @@
-node_modules/
+# Build outputs
 bin/
 obj/
+artifacts/
 dist/
-coverage/
-*.user
-.vs/
-BenchmarkDotNet.Artifacts/
+
+# Test & benchmark outputs
 TestResults/
+BenchmarkDotNet.Artifacts/
+coverage/
+*.trx
+
+# IDE / editor
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Node (tooling)
+node_modules/
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# NuGet
+*.nupkg
+*.snupkg
+packages/
+.nuget/
+
+# Misc
+*.binlog
+*.log
+tmp/
