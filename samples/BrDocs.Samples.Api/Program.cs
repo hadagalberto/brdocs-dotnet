@@ -253,3 +253,9 @@ internal sealed class PixSvgRequestValidator : AbstractValidator<PixSvgRequest>
         RuleFor(request => request.Txid).Matches("^[A-Za-z0-9]{1,25}$").When(request => request.Txid is not null);
     }
 }
+
+// WebApplicationFactory needs a public entry-point type in the sample assembly. The implicit
+// top-level Program class is internal; this partial declaration exposes it to integration tests.
+public partial class Program
+{
+}

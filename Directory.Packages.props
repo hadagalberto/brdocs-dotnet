@@ -2,11 +2,22 @@
 
   <!-- Central package version management for the BrDocs solution. -->
 
+  <!--
+    ASP.NET Core test-host packages are framework-versioned. The default matches net10.0;
+    net8.0 test builds select the 8.0 line so the sample API can be hosted on both target
+    frameworks in the CI matrix without relying on roll-forward of testing infrastructure.
+  -->
+  <PropertyGroup>
+    <AspNetCoreMvcTestingVersion>10.0.14</AspNetCoreMvcTestingVersion>
+    <AspNetCoreMvcTestingVersion Condition="'$(TargetFramework)' == 'net8.0'">8.0.33</AspNetCoreMvcTestingVersion>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageVersion Include="BenchmarkDotNet" Version="0.15.8" />
     <PackageVersion Include="FluentValidation" Version="12.2.0" />
     <PackageVersion Include="FsCheck" Version="3.6.0" />
     <PackageVersion Include="FsCheck.Xunit" Version="3.6.0" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="$(AspNetCoreMvcTestingVersion)" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="10.0.404" />
     <PackageVersion Include="xunit" Version="2.9.3" />

@@ -5,6 +5,7 @@ using Xunit;
 
 namespace BrDocs.FluentValidation.Tests;
 
+[Collection(FluentValidationTestGroup.Name)]
 public sealed class RuleTests
 {
     private const string CpfFormatted = "111.444.777-35";

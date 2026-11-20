@@ -5,6 +5,7 @@ using Xunit;
 
 namespace BrDocs.DataAnnotations.Tests;
 
+[Collection(DataAnnotationsTestGroup.Name)]
 public sealed class AttributeTests
 {
     private const string CpfFormatted = "111.444.777-35";
