@@ -548,4 +548,271 @@ internal static class Oracles
         digits = builder.ToString();
         return digits.Length == expectedLength;
     }
+
+    // ---- Pix BR Code ---------------------------------------------------------
+
+    /// <summary>
+    /// CRC-16/CCITT-FALSE via a precomputed 256-entry table — an implementation deliberately
+    /// different from the library's bit-by-bit shift (polynomial 0x1021, init 0xFFFF, no
+    /// reflection, no final XOR, per the BCB manual section 2.6.3).
+    /// </summary>
+    internal static string Crc16Oracle(string text)
+    {
+        ushort[] table = new ushort[256];
+        for (int value = 0; value < 256; value++)
+        {
+            ushort current = (ushort)(value << 8);
+            for (int bit = 0; bit < 8; bit++)
+            {
+                current = (current & 0x8000) != 0 ? (ushort)((current << 1) ^ 0x1021) : (ushort)(current << 1);
+            }
+            table[value] = current;
+        }
+        ushort crc = 0xFFFF;
+        foreach (char c in text)
+        {
+            crc = (ushort)((crc << 8) ^ table[(crc >> 8) ^ (c & 0xFF)]);
+        }
+        return crc.ToString("X4", CultureInfo.InvariantCulture);
+    }
+
+    /// <summary>
+    /// Recomputes the CRC of a payload that already carries one: the last four characters are
+    /// replaced by the checksum of everything up to and including "6304".
+    /// </summary>
+    internal static string FixCrc(string payload) => payload[..^4] + Crc16Oracle(payload[..^4]);
+
+    /// <summary>Encodes one TLV: ID + two-digit length + value (Substring/LINQ style).</summary>
+    internal static string Tlv(string id, string value)
+        => id + value.Length.ToString("00", CultureInfo.InvariantCulture) + value;
+
+    /// <summary>An independent TLV tree node, for comparing against <see cref="PixTlv"/>.</summary>
+    internal sealed record TlvNode(string Id, string Value, List<TlvNode>? Children);
+
+    /// <summary>
+    /// Parses a TLV stream with the same structural rules as the library but implemented with
+    /// Substring/LINQ: unique IDs per level, full consumption, and templates (26-51, 62,
+    /// 80-99) decomposed into leaf children.
+    /// </summary>
+    internal static List<TlvNode>? TryParseTlvStreamOracle(string text)
+    {
+        List<TlvNode>? nodes = ParseLevelOracle(text, allowTemplates: true);
+        return nodes is { Count: > 0 } ? nodes : null;
+    }
+
+    private static List<TlvNode>? ParseLevelOracle(string text, bool allowTemplates)
+    {
+        List<TlvNode> nodes = new();
+        HashSet<string> seen = new(StringComparer.Ordinal);
+        int position = 0;
+        while (position < text.Length)
+        {
+            if (position + 4 > text.Length || !text.Substring(position, 2).All(char.IsDigit)
+                || !text.Substring(position + 2, 2).All(char.IsDigit))
+            {
+                return null;
+            }
+            string id = text.Substring(position, 2);
+            int length = int.Parse(text.AsSpan(position + 2, 2), CultureInfo.InvariantCulture);
+            if (position + 4 + length > text.Length || !seen.Add(id))
+            {
+                return null;
+            }
+            string value = text.Substring(position + 4, length);
+            int numericId = int.Parse(id, CultureInfo.InvariantCulture);
+            bool isTemplate = numericId is >= 26 and <= 51 or 62 or (>= 80 and <= 99);
+            if (isTemplate)
+            {
+                if (!allowTemplates)
+                {
+                    return null;
+                }
+                List<TlvNode>? children = ParseLevelOracle(value, allowTemplates: false);
+                if (children is null)
+                {
+                    return null;
+                }
+                nodes.Add(new TlvNode(id, string.Empty, children));
+            }
+            else
+            {
+                nodes.Add(new TlvNode(id, value, null));
+            }
+            position += 4 + length;
+        }
+        return nodes;
+    }
+
+    /// <summary>Compares an oracle TLV tree with a <see cref="PixTlv"/> tree, recursively.</summary>
+    internal static bool TlvTreesEqual(List<TlvNode>? oracle, IReadOnlyList<PixTlv>? actual)
+    {
+        if (oracle is null || actual is null)
+        {
+            return oracle is null && actual is null;
+        }
+        if (oracle.Count != actual.Count)
+        {
+            return false;
+        }
+        for (int i = 0; i < oracle.Count; i++)
+        {
+            TlvNode expected = oracle[i];
+            PixTlv node = actual[i];
+            if (expected.Id != node.Id || expected.Value != node.Value)
+            {
+                return false;
+            }
+            if (expected.Children is null)
+            {
+                if (node.Children is not null)
+                {
+                    return false;
+                }
+            }
+            else if (!TlvTreesEqual(expected.Children, node.Children))
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /// <summary>
+    /// Builds a complete static Pix BR Code independently of the library: fields in ascending
+    /// order with the CRC computed by the oracle table.
+    /// </summary>
+    internal static string BuildStaticPayloadOracle(
+        string key, string name, string city, string txid, string mcc, string? amountText,
+        string? description, (string Id, string Value)? withdrawalFacilitator,
+        IReadOnlyList<(string Id, string Value)>? additional)
+    {
+        string merchantAccount = Tlv("00", "br.gov.bcb.pix") + Tlv("01", key);
+        if (description is not null)
+        {
+            merchantAccount += Tlv("02", description);
+        }
+        if (withdrawalFacilitator is { } fss)
+        {
+            merchantAccount += Tlv(fss.Id, fss.Value);
+        }
+        string additionalData = Tlv("05", txid);
+        if (additional is not null)
+        {
+            foreach ((string id, string value) in additional)
+            {
+                additionalData += Tlv(id, value);
+            }
+        }
+        string payload = Tlv("00", "01") + Tlv("26", merchantAccount) + Tlv("52", mcc)
+            + Tlv("53", "986")
+            + (amountText is null ? string.Empty : Tlv("54", amountText))
+            + Tlv("58", "BR") + Tlv("59", name) + Tlv("60", city) + Tlv("62", additionalData)
+            + "6304";
+        return payload + Crc16Oracle(payload);
+    }
+
+    /// <summary>Builds a complete dynamic Pix BR Code independently of the library.</summary>
+    internal static string BuildDynamicPayloadOracle(
+        string location, string name, string city, bool singleUse,
+        IReadOnlyList<(string Id, string Value)>? additional)
+    {
+        string merchantAccount = Tlv("00", "br.gov.bcb.pix") + Tlv("25", location);
+        string additionalData = Tlv("05", "***");
+        if (additional is not null)
+        {
+            foreach ((string id, string value) in additional)
+            {
+                additionalData += Tlv(id, value);
+            }
+        }
+        string payload = Tlv("00", "01") + (singleUse ? Tlv("01", "12") : string.Empty)
+            + Tlv("26", merchantAccount) + Tlv("52", "0000") + Tlv("53", "986")
+            + Tlv("58", "BR") + Tlv("59", name) + Tlv("60", city) + Tlv("62", additionalData)
+            + "6304";
+        return payload + Crc16Oracle(payload);
+    }
+
+    /// <summary>Deterministically applies one small mutation to <paramref name="text"/>: a replaced, inserted or deleted character.</summary>
+    internal static string Mutate(int seed, string text)
+    {
+        Random random = new(seed);
+        if (text.Length == 0)
+        {
+            return "0".ToString(CultureInfo.InvariantCulture);
+        }
+        int position = random.Next(text.Length + 1);
+        int kind = random.Next(3);
+        if (kind == 0)
+        {
+            // Replace one character with a random payload-ish character.
+            string alphabet = "0123456789ABCDEFBRbr.***govcbpix";
+            char replacement = alphabet[random.Next(alphabet.Length)];
+            return text[..position] + replacement + text[(position + 1)..];
+        }
+        if (kind == 1 && position < text.Length)
+        {
+            return text.Remove(position, 1);
+        }
+        return text.Insert(position, ((char)('0' + random.Next(10))).ToString());
+    }
+
+    /// <summary>
+    /// An independent Pix key validity check: canonical shapes only, reusing the CPF/CNPJ
+    /// oracles above and reimplementing the e-mail and UUID rules. Phone keys are checked only
+    /// for their shape ("+55" + DDD + 9-digit mobile): the DDD itself must be cross-checked
+    /// through <see cref="TelefoneBr"/>, so agreement properties generate phones from
+    /// <see cref="TelefoneBr.Generate"/> instead of arbitrary digits.
+    /// </summary>
+    internal static bool IsValidPixKeyOracle(string key)
+    {
+        if (key.Length is 0 or > 77)
+        {
+            return false;
+        }
+        if (key.StartsWith('+'))
+        {
+            // "+55" + DDD + 9-digit mobile; the DDD must be one of the ANATEL codes 11..99.
+            if (key.Length != 14 || !key[1..].All(char.IsDigit) || !key.StartsWith("+55", StringComparison.Ordinal))
+            {
+                return false;
+            }
+            int ddd = int.Parse(key.AsSpan(3, 2), CultureInfo.InvariantCulture);
+            return ddd is >= 11 and <= 99 && key[5] == '9';
+        }
+        if (key.Count(c => c == '@') == 1)
+        {
+            string local = key.Split('@')[0];
+            string domain = key.Split('@')[1];
+            bool localOk = local.Length is > 0 and <= 64
+                && !local.StartsWith('.') && !local.EndsWith('.')
+                && !local.Contains("..", StringComparison.Ordinal)
+                && local.All(c => char.IsLetterOrDigit(c) && c < 128 || "._%+-!#$&'*/=?^`{|}~".Contains(c));
+            bool domainOk = domain.Length > 0
+                && domain.Contains('.', StringComparison.Ordinal) && !domain.StartsWith('.')
+                && !domain.StartsWith('-') && !domain.EndsWith('.')
+                && !domain.EndsWith('-') && !domain.Contains("..", StringComparison.Ordinal)
+                && domain.Split('.')
+                    .All(label => label.Length is > 0 and <= 63 && !label.StartsWith('-')
+                        && !label.EndsWith('-') && label.All(char.IsLetterOrDigit))
+                && domain.Split('.').Last().Length >= 2;
+            return localOk && domainOk;
+        }
+        if (key.Length == 36)
+        {
+            string[] groups = key.Split('-');
+            return groups.Length == 5
+                && groups[0].Length == 8 && groups[1].Length == 4 && groups[2].Length == 4
+                && groups[3].Length == 4 && groups[4].Length == 12
+                && key.Replace("-", string.Empty).ToLowerInvariant().All(Uri.IsHexDigit);
+        }
+        if (key.Length == 11 && key.All(char.IsDigit))
+        {
+            return IsValidCpf(key);
+        }
+        if (key.Length == 14 && key.All(c => c is (>= '0' and <= '9') or (>= 'A' and <= 'Z')))
+        {
+            return IsValidCnpj(key);
+        }
+        return false;
+    }
 }

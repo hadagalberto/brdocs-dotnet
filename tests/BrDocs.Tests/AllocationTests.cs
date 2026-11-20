@@ -523,4 +523,63 @@ public sealed class AllocationTests
         Assert.Equal(0, MeasureAllocations(() => arrecadacao.IsEffectiveValue));
         Assert.Equal(0, MeasureAllocations(() => arrecadacao.Value == 509.60m));
     }
+
+    // ---- Pix ------------------------------------------------------------------
+
+    // The BCB static vector (Manual de Padrões para Iniciação do Pix, section 2.6.3).
+    private const string PixStaticVector =
+        "00020126580014br.gov.bcb.pix0136123e4567-e12b-12d1-a456-4266554400005204000053039865802BR5913Fulano de Tal6008BRASILIA62070503***63041D3D";
+
+    // The BCB dynamic vector (section 2.7.2).
+    private const string PixDynamicVector =
+        "00020101021226700014br.gov.bcb.pix2548pix.example.com/8b3da2f39a4140d1a91abd93113bd4415204000053039865802BR5913Fulano de Tal6008BRASILIA62070503***630464E4";
+
+    [Fact]
+    public void PixPayload_IsValid_Static_Does_Not_Allocate()
+    {
+        Assert.Equal(0, MeasureAllocations(() => PixPayload.IsValid(PixStaticVector)));
+    }
+
+    [Fact]
+    public void PixPayload_IsValid_Dynamic_Does_Not_Allocate()
+    {
+        Assert.Equal(0, MeasureAllocations(() => PixPayload.IsValid(PixDynamicVector)));
+    }
+
+    [Fact]
+    public void PixPayload_IsValid_Composite_Does_Not_Allocate()
+    {
+        Assert.Equal(0, MeasureAllocations(() => PixPayload.IsValid(
+            "00020126580014br.gov.bcb.pix0136123e4567-e12b-12d1-a456-4266554400005204000053039865406100.505802BR5913Fulano de Tal6008BRASILIA62070503***80740014br.gov.bcb.pix2552pix.example.com/rec/2353c790eefb11eaadc10242ac12000263042875")));
+    }
+
+    [Fact]
+    public void PixPayload_IsValid_Invalid_Does_Not_Allocate()
+    {
+        Assert.Equal(0, MeasureAllocations(() => PixPayload.IsValid(PixStaticVector[..^1])));
+    }
+
+    [Fact]
+    public void PixKey_IsValid_Does_Not_Allocate()
+    {
+        Assert.Equal(0, MeasureAllocations(() => PixKey.IsValid("123e4567-e12b-12d1-a456-426655440000")));
+        Assert.Equal(0, MeasureAllocations(() => PixKey.IsValid("111.444.777-35")));
+        Assert.Equal(0, MeasureAllocations(() => PixKey.IsValid("fulano_da_silva.recebedor@example.com")));
+        Assert.Equal(0, MeasureAllocations(() => PixKey.IsValid("+5511912345678")));
+        Assert.Equal(0, MeasureAllocations(() => PixKey.IsValid("garbage key")));
+    }
+
+    [Fact]
+    public void PixKey_TryNormalize_Canonical_Does_Not_Allocate()
+    {
+        char[] buffer = new char[PixKey.MaxLength];
+        Assert.Equal(0, MeasureAllocations(() => PixKey.TryNormalize("123E4567-E12B-12D1-A456-426655440000", buffer, out _)));
+    }
+
+    [Fact]
+    public void PixTlv_TryParseSequence_Invalid_Does_Not_Allocate()
+    {
+        // The all-allocating object tree is only materialized when the stream is valid.
+        Assert.Equal(0, MeasureAllocations(() => PixTlv.TryParseSequence("not a tlv stream", out _)));
+    }
 }

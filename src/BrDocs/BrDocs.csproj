@@ -9,11 +9,15 @@
       (legacy + Mercosul), Telefone BR (ANATEL DDD list, E.164) and boletos: the FEBRABAN bank-slip
       código de barras/linha digitável (44/47 digits, general DV módulo 11, field DVs módulo 10,
       due-date factor with the 2025-02-22 reset) and arrecadação/convenio codes (44/48 digits,
-      per-block DVs módulo 10 or 11 per the third digit). Span-based, allocation-free validation,
-      culture-invariant formatting, ISpanFormattable/ISpanParsable integration and Generate()
-      helpers for tests and fake data. Zero runtime dependencies; AOT- and trimming-compatible.
+      per-block DVs módulo 10 or 11 per the third digit). Pix BR Code payloads (EMV QRCPS-MPM,
+      Manual de Padrões para Iniciação do Pix do BCB): TLV encoder/decoder with nested templates,
+      CRC-16/CCITT-FALSE, static and dynamic payload builders, full PixPayload.Parse validation,
+      Pix key detection/validation (CPF, CNPJ incl. alphanumeric, e-mail, +55 phone, EVP) and
+      merchant name/city normalization. Span-based, allocation-free validation, culture-invariant
+      formatting, ISpanFormattable/ISpanParsable integration and Generate() helpers for tests and
+      fake data. Zero runtime dependencies; AOT- and trimming-compatible.
     </Description>
-    <PackageTags>brazil;brazilian;cpf;cnpj;cep;pis;pasep;nit;titulo-eleitor;cnh;renavam;placa;mercosul;telefone;ddd;documents;validation;valueobject;brdocs;boleto;febraban;linha-digitavel;codigo-de-barras;arrecadacao;convenio;payments</PackageTags>
+    <PackageTags>brazil;brazilian;cpf;cnpj;cep;pis;pasep;nit;titulo-eleitor;cnh;renavam;placa;mercosul;telefone;ddd;documents;validation;valueobject;brdocs;boleto;febraban;linha-digitavel;codigo-de-barras;arrecadacao;convenio;payments;pix;br-code;copia-e-cola;emv;qrcps;tlv;crc16;payments</PackageTags>
     <IsPackable>true</IsPackable>
   </PropertyGroup>
 
