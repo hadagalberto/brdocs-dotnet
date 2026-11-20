@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>BrDocs.QrCode</PackageId>
+    <Title>BrDocs — QR Code encoder</Title>
+    <Description>
+      Complete, dependency-free ISO/IEC 18004 QR Code encoder for .NET: byte and alphanumeric modes
+      (automatically choosing the smaller), versions 1–40, error correction L/M/Q/H, Reed–Solomon over
+      GF(256), block interleaving, all eight masks selected by the four ISO penalty rules, format and
+      version BCH codes, and a four-module quiet zone. Outputs the bool[,] module matrix, a single-path
+      crisp-edged SVG string and PNG bytes written with a minimal in-box PNG/zlib writer. Includes a
+      PixPayload.ToQrSvg() extension for BR Code payloads.
+    </Description>
+    <PackageTags>brazil;brazilian;pix;br-code;qrcode;qr-code;iso18004;svg;png;reed-solomon;brdocs</PackageTags>
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\BrDocs\BrDocs.csproj" />
+    <PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="all" />
+  </ItemGroup>
+
+</Project>
