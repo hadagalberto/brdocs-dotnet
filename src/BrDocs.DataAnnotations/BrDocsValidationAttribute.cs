@@ -48,7 +48,16 @@ public abstract class BrDocsValidationAttribute : ValidationAttribute
         {
             return true;
         }
-        return value is string text && IsValidText(text.AsSpan());
+        if (value is string text)
+        {
+            return IsValidText(text.AsSpan());
+        }
+        // A property may be typed as a BrDocs value object ([Cpf] public Cpf Doc { get; set; }).
+        // Those types render their canonical formatted form from ToString(), which is exactly the
+        // text the string overload validates. Arbitrary objects keep the historical behaviour:
+        // their text simply fails the document check.
+        string? rendered = value.ToString();
+        return rendered is not null && IsValidText(rendered.AsSpan());
     }
 
     /// <inheritdoc />

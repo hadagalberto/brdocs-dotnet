@@ -534,33 +534,29 @@ public sealed class BoletoTests
     [Fact]
     public void DueDate_Resolves_Against_Today()
     {
-        // The DueDate property resolves against DateTime.Today at read time. Capture one
-        // reference date and allow a one-day slack so a midnight rollover (or a machine in a
-        // different time zone) cannot make the assertion flaky. Decode with the explicit
-        // reference is asserted exactly, with no clock involved.
+        // Tightened per independent review finding 9: use the explicit reference-date API so the
+        // expected value is exact instead of an InRange slack around DateTime.Today.
         DateOnly today = DateOnly.FromDateTime(DateTime.Today);
 
         Boleto soon = Boleto.Create(1, 9, today.AddDays(10), 1m, new string('1', 25));
-        DateOnly? soonDueDate = soon.DueDate;
-        Assert.NotNull(soonDueDate);
-        Assert.InRange(soonDueDate.Value.DayNumber, today.AddDays(9).DayNumber, today.AddDays(11).DayNumber);
+        Assert.Equal(today.AddDays(10), soon.GetDueDate(today));
         Assert.Equal(today.AddDays(10), Boleto.Decode(soon.DueDateFactor, today));
+        Assert.Equal(soon.GetDueDate(today), soon.DueDate); // the property uses today as its reference
 
         Boleto recentPast = Boleto.Create(1, 9, today.AddDays(-30), 1m, new string('1', 25));
-        DateOnly? pastDueDate = recentPast.DueDate;
-        Assert.NotNull(pastDueDate);
-        Assert.InRange(pastDueDate.Value.DayNumber, today.AddDays(-31).DayNumber, today.AddDays(-29).DayNumber);
+        Assert.Equal(today.AddDays(-30), recentPast.GetDueDate(today));
         Assert.Equal(today.AddDays(-30), Boleto.Decode(recentPast.DueDateFactor, today));
+        Assert.Equal(recentPast.GetDueDate(today), recentPast.DueDate);
     }
 
     [Fact]
     public void DueDate_Is_Null_When_No_Candidate_Falls_Inside_The_Window()
     {
-        // -3001 days is outside the [-3000, +5500] decoding window by a whole day, so a
-        // midnight rollover of the local clock cannot change the expected result.
-        DateOnly today = DateOnly.FromDateTime(DateTime.Today);
-        Boleto boleto = Boleto.Create(1, 9, today.AddDays(-3001), 1m, new string('1', 25));
-        Assert.Null(boleto.DueDate);
+        // -3001 days is outside the [-3000, +5500] decoding window by a whole day; assert it
+        // against a fixed reference (independent review finding 9).
+        DateOnly reference = new(2030, 1, 1);
+        Boleto boleto = Boleto.Create(1, 9, reference.AddDays(-3001), 1m, new string('1', 25));
+        Assert.Null(boleto.GetDueDate(reference));
     }
 
     [Fact]
@@ -584,10 +580,16 @@ public sealed class BoletoTests
     [Fact]
     public void Generate_Produces_Valid_Boletos_That_Round_Trip()
     {
+        // A fixed reference date makes the generated due dates exact (review finding 9).
+        DateOnly reference = new(2030, 1, 1);
         var banks = new HashSet<int>();
         for (int i = 0; i < 500; i++)
         {
-            Boleto boleto = Boleto.Generate(new Random(i));
+            var rng = new Random(i);
+            rng.Next(1, 1000);                  // Generate's first draw: the bank code.
+            int expectedDays = rng.Next(0, 91); // Generate's second draw: days from reference.
+            Boleto boleto = Boleto.Generate(i, reference);
+            Assert.Equal(reference.AddDays(expectedDays), boleto.GetDueDate(reference));
             Assert.True(Boleto.IsValid(boleto.Barcode), $"generated {boleto.Barcode} must be valid");
             Assert.True(Boleto.IsValid(boleto.LinhaDigitavel), "the generated linha digitável must be valid");
             Assert.True(Oracles.IsValidBoleto(boleto.Barcode), "the oracle must accept the generated boleto");
@@ -600,8 +602,8 @@ public sealed class BoletoTests
             Assert.Equal(9, boleto.CurrencyCode);
             Assert.InRange(boleto.Amount, 0m, 999_999.99m);
             Assert.Equal(25, boleto.FreeField.Length);
-            Assert.NotNull(boleto.DueDate);
-            Assert.Equal(boleto.DueDateFactor, Boleto.Encode(boleto.DueDate!.Value));
+            Assert.Equal(reference.AddDays(expectedDays), boleto.GetDueDate(reference));
+            Assert.Equal(boleto.DueDateFactor, Boleto.Encode(reference.AddDays(expectedDays)));
             banks.Add(boleto.BankCode);
         }
         Assert.True(banks.Count >= 50, $"expected at least 50 distinct banks, got {banks.Count}");

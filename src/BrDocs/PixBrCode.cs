@@ -58,6 +58,7 @@ internal static class PixBrCode
         KeyInvalid,
         LocationInvalid,
         DescriptionInvalid,
+        AdditionalDataInvalid,
         WithdrawalFacilitatorInvalid,
         MccMissing,
         MccInvalid,
@@ -250,7 +251,7 @@ internal static class PixBrCode
                         error = Error.MerchantNameMissing;
                         return false;
                     }
-                    if (length > PixText.MaxNameLength || !IsAllowedText(value))
+                    if (length > PixText.MaxNameLength || !PixText.IsAllowedText(value))
                     {
                         position = cursor;
                         error = Error.MerchantNameInvalid;
@@ -265,7 +266,7 @@ internal static class PixBrCode
                         error = Error.MerchantCityMissing;
                         return false;
                     }
-                    if (length > PixText.MaxCityLength || !IsAllowedText(value))
+                    if (length > PixText.MaxCityLength || !PixText.IsAllowedText(value))
                     {
                         position = cursor;
                         error = Error.MerchantCityInvalid;
@@ -400,6 +401,7 @@ internal static class PixBrCode
             Error.KeyInvalid => "the Pix key (sub-field 01) is not a valid CPF, CNPJ, e-mail, +55 phone or UUID",
             Error.LocationInvalid => "the payload location URL (sub-field 25) must be 1..77 RFC 3986 characters without a protocol prefix",
             Error.DescriptionInvalid => "the additional information (sub-field 02) must hold 1..72 characters",
+            Error.AdditionalDataInvalid => "an additional data sub-field (field 62) must hold single-byte characters",
             Error.WithdrawalFacilitatorInvalid => "the withdrawal facilitator (sub-field 03, fss) must be exactly 8 digits (the ISPB)",
             Error.MccMissing => "the merchant category code (field 52) is missing",
             Error.MccInvalid => "the merchant category code (field 52) must be exactly 4 digits",
@@ -479,7 +481,7 @@ internal static class PixBrCode
                     break;
                 case 2:
                     // infoAdicional, "conjunto livre de caracteres", 1..72 (section 2.6, footnote 24).
-                    if (subLength is 0 or > MaxDescriptionLength)
+                    if (subLength is 0 or > MaxDescriptionLength || !PixText.IsAllowedFreeText(subValue))
                     {
                         error = Error.DescriptionInvalid;
                         return false;
@@ -594,6 +596,11 @@ internal static class PixBrCode
             if (subValue.Length > AdditionalDataMaxLength)
             {
                 error = Error.AdditionalDataTooLong;
+                return false;
+            }
+            if (!PixText.IsAllowedFreeText(subValue))
+            {
+                error = Error.AdditionalDataInvalid;
                 return false;
             }
             if (subId == 5)
@@ -723,19 +730,6 @@ internal static class PixBrCode
         foreach (char c in value)
         {
             if (!char.IsAsciiLetterOrDigit(c))
-            {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    /// <summary>The merchant name/city character set: ASCII letters, digits and spaces.</summary>
-    private static bool IsAllowedText(ReadOnlySpan<char> value)
-    {
-        foreach (char c in value)
-        {
-            if (!char.IsAsciiLetterOrDigit(c) && c != ' ')
             {
                 return false;
             }

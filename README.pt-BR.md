@@ -40,7 +40,7 @@ Alvos: `net8.0` e `net10.0`.
 | Placa | `Placa` | `ABC-1234` / `ABC1D23` | nenhum (estrutural) | `Generate()`, `GenerateLegacy()` |
 | Telefone BR | `TelefoneBr` | `(11) 91234-5678` / `+5511912345678` | nenhum (lista ANATEL) | `Generate()`, `GenerateFixed()` |
 | Boleto (FEBRABAN) | `Boleto` | barras 44 dígitos / linha digitável 47 | mod 10 × 3 + mod 11 | `Generate()` |
-| Arrecadação / convênio | `Arrecadacao` | barras 44/48 / linha 48 | mod 10 ou 11 × 4 + mod 11 | `Generate()` |
+| Arrecadação / convênio | `Arrecadacao` | barras de 44 dígitos / linha 48 | mod 10 ou 11 (escolhido pelo 3º dígito) para o DV geral e os 4 DVs de campo | `Generate()` |
 | Pix BR Code | `PixPayload` | TLV EMV® QRCPS-MPM | CRC16/CCITT-FALSE | builder |
 
 Os parsers ignoram `.`, `-`, `/` e espaços (além de parênteses e `+` inicial em telefones e da
@@ -121,8 +121,9 @@ Console.WriteLine(TelefoneBr.IsValid("11712345678"));  // False (prefixo inváli
 
 Analisa um código de barras de 44 dígitos ou uma linha digitável de 47 e converte entre ambos.
 Os DVs de campo usam módulo 10; o DV geral usa módulo 11 com `0`, `10` e `11` mapeados para `1`.
-Arrecadação/convênio (linha de 48 dígitos começando com `8`) usa módulo 10 ou 11 por bloco,
-conforme o terceiro dígito, e expõe o valor efetivo quando esse dígito é `6` ou `8`.
+Arrecadação/convênio tem sempre código de barras de 44 dígitos (a linha digitável tem 48 e começa
+com `8`). O DV geral e os quatro DVs de campo usam módulo 10 quando o terceiro dígito é `6` ou `7`,
+e módulo 11 quando é `8` ou `9`; o valor efetivo é exposto quando esse dígito é `6` ou `8`.
 
 ```csharp
 using BrDocs;
@@ -150,7 +151,8 @@ O boleto codifica o vencimento em um fator de 4 dígitos contado a partir de 199
 fator sozinho é ambíguo. `Boleto.Encode(DateOnly)` escreve o fator e
 `Boleto.Decode(factor, reference)` escolhe o ciclo mais próximo da data de referência dentro da
 janela `[-3000, +5500]` dias. `0000` significa "sem vencimento". `Boleto.DueDate` usa hoje como
-referência.
+referência; `GetDueDate(reference)` resolve contra uma data explícita e
+`Generate(seed, reference)`/`Generate(rng, reference)` tornam o vencimento gerado determinístico.
 
 ```csharp
 using BrDocs;
@@ -214,6 +216,10 @@ Console.WriteLine(PixKey.Detect("12ABC34501DE35"));                      // Cnpj
 Console.WriteLine(PixKey.IsValid("+5511912345678"));                     // True
 Console.WriteLine(PixKey.IsValid("garbage key"));                        // False
 ```
+
+Uma string de 11 dígitos que não é um CPF válido é ambígua com um celular local e é rejeitada por
+`Normalize`/`CreateStatic` (como `Detect` já faz); deixe a intenção de telefone explícita com
+`+55`, formatação local ou prefixo de país.
 
 ### Geração de QR Code
 

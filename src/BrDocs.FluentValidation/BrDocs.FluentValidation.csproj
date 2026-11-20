@@ -9,6 +9,8 @@
     </Description>
     <PackageTags>brazil;cpf;cnpj;cep;validation;fluentvalidation;brdocs</PackageTags>
     <IsPackable>true</IsPackable>
+    <IsAotCompatible>true</IsAotCompatible>
+    <IsTrimmable>true</IsTrimmable>
   </PropertyGroup>
 
   <ItemGroup>

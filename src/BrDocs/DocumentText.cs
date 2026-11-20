@@ -42,9 +42,20 @@ internal static class DocumentText
         written = 0;
         foreach (char c in source)
         {
-            if (IsIgnored(c)) continue;
-            if ((uint)(c - '0') > 9u) { written = 0; return false; }
-            if (written >= destination.Length) { written = 0; return false; }
+            if (IsIgnored(c))
+            {
+                continue;
+            }
+            if ((uint)(c - '0') > 9u)
+            {
+                written = 0;
+                return false;
+            }
+            if (written >= destination.Length)
+            {
+                written = 0;
+                return false;
+            }
             destination[written++] = c;
         }
         return true;
@@ -74,10 +85,21 @@ internal static class DocumentText
         written = 0;
         foreach (char c in source)
         {
-            if (IsIgnored(c)) continue;
+            if (IsIgnored(c))
+            {
+                continue;
+            }
             char normalized = NormalizeAsciiUpper(c);
-            if (normalized == Invalid) { written = 0; return false; }
-            if (written >= destination.Length) { written = 0; return false; }
+            if (normalized == Invalid)
+            {
+                written = 0;
+                return false;
+            }
+            if (written >= destination.Length)
+            {
+                written = 0;
+                return false;
+            }
             destination[written++] = normalized;
         }
         return true;
@@ -95,9 +117,18 @@ internal static class DocumentText
 
     private static char NormalizeAsciiUpper(char c)
     {
-        if ((uint)(c - '0') <= 9u) return c;
-        if ((uint)(c - 'A') <= 25u) return c;
-        if ((uint)(c - 'a') <= 25u) return (char)(c - 32);
+        if ((uint)(c - '0') <= 9u)
+        {
+            return c;
+        }
+        if ((uint)(c - 'A') <= 25u)
+        {
+            return c;
+        }
+        if ((uint)(c - 'a') <= 25u)
+        {
+            return (char)(c - 32);
+        }
         return Invalid;
     }
 }

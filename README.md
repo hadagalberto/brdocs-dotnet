@@ -39,7 +39,7 @@ Targets `net8.0` and `net10.0`.
 | Placa | `Placa` | `ABC-1234` / `ABC1D23` | none (structural) | `Generate()`, `GenerateLegacy()` |
 | Telefone BR | `TelefoneBr` | `(11) 91234-5678` / `+5511912345678` | none (DDD list) | `Generate()`, `GenerateFixed()` |
 | Boleto (FEBRABAN) | `Boleto` | 44-digit barcode / 47-digit linha digitável | mod 10 × 3 + mod 11 | `Generate()` |
-| Arrecadação / convênio | `Arrecadacao` | 44/48-digit barcode / 48-digit linha | mod 10 or 11 × 4 + mod 11 | `Generate()` |
+| Arrecadação / convênio | `Arrecadacao` | 44-digit barcode / 48-digit linha | mod 10 or 11 (chosen by the 3rd digit) for the general DV and all 4 field DVs | `Generate()` |
 | Pix BR Code | `PixPayload` | EMV® QRCPS-MPM TLV string | CRC16/CCITT-FALSE | builder |
 
 All parsers ignore `.`, `-`, `/` and spaces (plus parentheses and a leading `+` for phones, and
@@ -120,8 +120,9 @@ Console.WriteLine(TelefoneBr.IsValid("11712345678"));  // False (invalid subscri
 
 Parse either a 44-digit código de barras or a 47-digit linha digitável and convert both ways.
 Field DVs use mod 10; the general DV uses mod 11 with `0`, `10` and `11` mapped to `1`.
-Arrecadação/convênio codes (48-digit linha starting with `8`) use mod 10 or mod 11 per block
-depending on the third digit and expose the effective value when that digit is `6` or `8`.
+Arrecadação/convênio codes always have a 44-digit código de barras (the 48-digit linha starts
+with `8`). The general DV and all four field DVs use mod 10 when the third digit is `6` or `7`,
+and mod 11 when it is `8` or `9`; the effective value is exposed when that digit is `6` or `8`.
 
 ```csharp
 using BrDocs;
@@ -148,7 +149,9 @@ Boletos encode the due date as a 4-digit factor counted from 1997-10-07. Factor 
 **2025-02-21**; the next day the cycle restarts at `1000` (**2025-02-22**), so a factor alone is
 ambiguous. `Boleto.Encode(DateOnly)` writes the factor and `Boleto.Decode(factor, reference)` picks
 the cycle whose date is nearest the reference within the `[-3000, +5500]` day window. `0000` means
-"no due date". `Boleto.DueDate` uses today as the reference.
+"no due date". `Boleto.DueDate` uses today as the reference; `GetDueDate(reference)` resolves
+against an explicit date, and `Generate(seed, reference)`/`Generate(rng, reference)` make
+generated due dates deterministic.
 
 ```csharp
 using BrDocs;
@@ -211,6 +214,10 @@ Console.WriteLine(PixKey.Detect("12ABC34501DE35"));                      // Cnpj
 Console.WriteLine(PixKey.IsValid("+5511912345678"));                     // True
 Console.WriteLine(PixKey.IsValid("garbage key"));                        // False
 ```
+
+A bare 11-digit string that is not a valid CPF is ambiguous with a local mobile number and is
+rejected by `Normalize`/`CreateStatic` (just as `Detect` rejects it); make the phone intent
+explicit with `+55`, local formatting or a country-code prefix.
 
 ### QR Code rendering
 

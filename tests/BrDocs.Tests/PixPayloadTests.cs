@@ -325,6 +325,7 @@ public sealed class PixPayloadTests
 
     [Theory]
     [InlineData("")]                           // empty
+    [InlineData("   ")]                        // spaces only (restored: commit 1ade2ff removed it)
     [InlineData("Foo漢Bar")]                    // characters outside the ASCII set
     [InlineData("Foo Bar!")]                   // punctuation outside the allowed set
     [InlineData("Ægir Industries")]            // Æ has no single-letter ASCII base

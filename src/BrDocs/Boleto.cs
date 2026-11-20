@@ -265,17 +265,21 @@ public readonly record struct Boleto : IEquatable<Boleto>, ISpanFormattable, ISp
     /// <see cref="Decode(int, DateOnly)"/>). Use <see cref="TryDecode(int, DateOnly, out DateOnly)"/>
     /// to resolve against a fixed reference date.
     /// </summary>
-    public DateOnly? DueDate
+    public DateOnly? DueDate => GetDueDate(DateOnly.FromDateTime(DateTime.Today));
+
+    /// <summary>
+    /// Resolves <see cref="DueDateFactor"/> against an explicit reference date, making the result
+    /// deterministic (the cycle-ambiguous factor is decoded exactly as in <see cref="Decode"/>).
+    /// </summary>
+    /// <param name="reference">The reference date that selects the factor cycle.</param>
+    /// <returns>
+    /// The due date, or <see langword="null"/> when the factor is 0000 (no due date) or no
+    /// candidate falls inside the disambiguation window around <paramref name="reference"/>.
+    /// </returns>
+    public DateOnly? GetDueDate(DateOnly reference)
     {
-        get
-        {
-            int factor = DueDateFactor;
-            if (factor == 0)
-            {
-                return null;
-            }
-            return TryDecode(factor, DateOnly.FromDateTime(DateTime.Today), out DateOnly dueDate) ? dueDate : null;
-        }
+        int factor = DueDateFactor;
+        return factor != 0 && TryDecode(factor, reference, out DateOnly dueDate) ? dueDate : null;
     }
 
     /// <summary>The bank free field (barcode positions 20–44), 25 digits.</summary>
@@ -472,10 +476,33 @@ public readonly record struct Boleto : IEquatable<Boleto>, ISpanFormattable, ISp
     /// next 90 days, a random amount up to R$ 999.999,99 and a random 25-digit free field.
     /// </returns>
     public static Boleto Generate(Random? rng = null)
+        => Generate(rng, DateOnly.FromDateTime(DateTime.Today));
+
+    /// <summary>
+    /// Generates a random valid boleto whose due date is drawn relative to an explicit reference
+    /// date, so the result is deterministic for a given random source.
+    /// </summary>
+    /// <param name="rng">Optional source of randomness; defaults to <see cref="Random.Shared"/>.</param>
+    /// <param name="reference">The date from which the 0–90 day due-date offset is drawn.</param>
+    /// <returns>A valid boleto with a due date in [reference, reference + 90 days].</returns>
+    public static Boleto Generate(Random? rng, DateOnly reference)
     {
         Random random = rng ?? Random.Shared;
         int bank = random.Next(1, 1000);
-        DateOnly dueDate = DateOnly.FromDateTime(DateTime.Today).AddDays(random.Next(0, 91));
+        DateOnly dueDate = reference.AddDays(random.Next(0, 91));
+        return GenerateCore(random, bank, dueDate);
+    }
+
+    /// <summary>
+    /// Generates a random valid boleto from an integer seed and an explicit reference date.
+    /// </summary>
+    /// <param name="seed">The seed of the <see cref="Random"/> used for every generated field.</param>
+    /// <param name="reference">The date from which the 0–90 day due-date offset is drawn.</param>
+    /// <returns>A valid, reproducible boleto.</returns>
+    public static Boleto Generate(int seed, DateOnly reference) => Generate(new Random(seed), reference);
+
+    private static Boleto GenerateCore(Random random, int bank, DateOnly dueDate)
+    {
         decimal amount = random.Next(0, 100_000_000) / 100m;
         Span<char> freeField = stackalloc char[FreeFieldLength];
         for (int i = 0; i < FreeFieldLength; i++)

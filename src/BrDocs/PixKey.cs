@@ -235,9 +235,9 @@ public static class PixKey
     /// <remarks>
     /// <para>This method performs no allocations.</para>
     /// <para>
-    /// An 11-digit string that is a valid CPF is normalized as a CPF; an invalid 11-digit string
-    /// that parses as a local mobile number is normalized as a phone. Keys longer than the
-    /// canonical forms are rejected.
+    /// An 11-digit string that is a valid CPF is normalized as a CPF; any other 11-digit string
+    /// is ambiguous and rejected (a phone must carry an explicit "+55", a formatted local number
+    /// or a country-code prefix). Keys longer than the canonical forms are rejected.
     /// </para>
     /// </remarks>
     public static bool TryNormalize(ReadOnlySpan<char> key, Span<char> destination, out int written)
@@ -266,7 +266,14 @@ public static class PixKey
         }
 
         // Phone input in local, display or bare-country-code form; only mobiles are Pix keys.
-        if (key.Length <= E164MobileLength + 6 && TelefoneBr.TryParse(key, out TelefoneBr phone) && phone.IsMobile)
+        // An 11-digit CPF-shaped string (with or without CPF punctuation) is ambiguous: Detect()
+        // refuses it, so normalization must refuse it too instead of guessing a phone key
+        // (independent review finding 1). A leading '+', phone punctuation or a 13-digit country
+        // code makes the intent explicit and leaves the input eligible.
+        if (!IsAmbiguousElevenDigitInput(key)
+            && key.Length <= E164MobileLength + 6
+            && TelefoneBr.TryParse(key, out TelefoneBr phone)
+            && phone.IsMobile)
         {
             Span<char> national = stackalloc char[NationalMobileLength];
             if (!phone.TryFormat(national, out int nationalDigits, "N", CultureInfo.InvariantCulture))
@@ -285,6 +292,34 @@ public static class PixKey
             return true;
         }
         return false;
+    }
+
+    /// <summary>
+    /// Detects the ambiguous CPF/phone shape: exactly 11 digits once only CPF punctuation
+    /// ('.' and '-') is removed. Such input is never reinterpreted as a phone key.
+    /// </summary>
+    private static bool IsAmbiguousElevenDigitInput(ReadOnlySpan<char> key)
+    {
+        // Ignore insignificant leading/trailing whitespace, but keep interior spaces: they are
+        // phone formatting ("11 91234 5678") and make the key type explicit.
+        key = key.Trim();
+        int digits = 0;
+        foreach (char c in key)
+        {
+            if (c is '.' or '-')
+            {
+                continue;
+            }
+            if (!char.IsAsciiDigit(c))
+            {
+                return false;
+            }
+            if (++digits > CpfLength)
+            {
+                return false;
+            }
+        }
+        return digits == CpfLength;
     }
 
     /// <summary>

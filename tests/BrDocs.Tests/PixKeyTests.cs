@@ -126,7 +126,8 @@ public sealed class PixKeyTests
     [InlineData("12ABC34501DE35", ValidAlphanumericCnpj)]
     [InlineData("(11) 91234-5678", "+5511912345678")]                 // display form
     [InlineData("11 91234 5678", "+5511912345678")]                   // local form
-    [InlineData("11912345678", "+5511912345678")]
+    // "11912345678" removed: a bare 11-digit string is CPF-shaped and ambiguous, so it is
+    // now rejected (independent review finding 1); see TryNormalize_Returns_False_For_Input_That_Is_No_Key.
     [InlineData("+55 (61) 91234-5678", ValidPhone)]
     [InlineData("5561912345678", ValidPhone)]                        // bare country code
     [InlineData("55 61 91234 5678", ValidPhone)]
@@ -153,11 +154,15 @@ public sealed class PixKeyTests
     }
 
     [Fact]
-    public void An_Eleven_Digit_String_That_Is_Not_A_Cpf_Falls_Back_To_A_Phone()
+    public void An_Eleven_Digit_String_That_Is_Not_A_Cpf_Is_Rejected_As_Ambiguous()
     {
-        // "11987654325" is not a valid CPF, but parses as the local mobile 11 98765-4325.
-        Assert.False(Cpf.IsValid("11987654325"));
-        Assert.Equal("+5511987654325", PixKey.Normalize("11987654325"));
+        // Corrected per independent review finding 1: the old assertion expected a phone key
+        // ("+5511987654325"), silently guessing the key type that Detect() refuses to detect.
+        // A bare 11-digit input is CPF-shaped; without "+55" or phone formatting it is ambiguous.
+        const string ambiguous = "11987654325";
+        Assert.False(Cpf.IsValid(ambiguous));
+        Assert.Null(PixKey.Detect(ambiguous));
+        Assert.Throws<FormatException>(() => PixKey.Normalize(ambiguous));
     }
 
     [Theory]
@@ -165,6 +170,7 @@ public sealed class PixKeyTests
     [InlineData("1131234567")]
     [InlineData("1191234567")]         // 8-digit subscriber starting with 9
     [InlineData("hello")]
+    [InlineData("11912345678")]        // bare 11 digits: CPF-shaped, not an explicit phone
     [InlineData("11144477736")]        // invalid CPF, invalid phone (DDD 11 + 3-digit-prefixed number)
     [InlineData("111.444.777-36")]     // invalid formatted CPF
     [InlineData("12.ABC.345/01DE-36")] // invalid alphanumeric CNPJ

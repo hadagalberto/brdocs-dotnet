@@ -157,8 +157,10 @@ public sealed class PixPropertyTests
     {
         Random random = new(seed);
         string key = Cpf.Generate(random).ToString("N");
-        string name = Oracles.RandomString(random.Next(), random.Next(1, 25), "abcXYZ 0123456789");
-        string city = Oracles.RandomString(random.Next(), random.Next(1, 15), "abcXYZ 0123456789");
+        // Review finding 3: BR Code text needs at least one letter or digit; keep the generators
+        // inside the valid domain instead of feeding all-space names to the builders.
+        string name = NonBlank(random, 25);
+        string city = NonBlank(random, 15);
         string txid = Oracles.RandomString(random.Next(), random.Next(1, 25), Oracles.LowerAlphanumericAlphabet);
         string mcc = Oracles.RandomString(random.Next(), 4, Digits);
         decimal amount = random.Next(0, 100_000) / 100m;
@@ -195,8 +197,10 @@ public sealed class PixPropertyTests
     {
         Random random = new(seed);
         string location = Oracles.RandomString(random.Next(), random.Next(1, 60), "example.com/cobv0123456789abcdef.-_~");
-        string name = Oracles.RandomString(random.Next(), random.Next(1, 25), "abcXYZ 0123456789");
-        string city = Oracles.RandomString(random.Next(), random.Next(1, 15), "abcXYZ 0123456789");
+        // Review finding 3: BR Code text needs at least one letter or digit; keep the generators
+        // inside the valid domain instead of feeding all-space names to the builders.
+        string name = NonBlank(random, 25);
+        string city = NonBlank(random, 15);
         bool singleUse = random.Next(2) == 0;
         string bill = Oracles.RandomString(random.Next(), random.Next(1, 25), Oracles.LowerAlphanumericAlphabet);
 
@@ -221,7 +225,7 @@ public sealed class PixPropertyTests
         // Through the payload builder: the last four characters of every built payload must be
         // the oracle's CRC-16/CCITT-FALSE over the rest of the payload.
         string key = Cnpj.Generate(new Random(seed)).ToString("N");
-        string name = Oracles.RandomString(seed, 1 + Math.Abs(seed) % 20, "abcXYZ 0123456789");
+        string name = NonBlank(new Random(seed), 20);
         string payload = PixPayload.CreateStatic(key, name, "SAO PAULO").Build().ToString();
         Assert.Equal(Oracles.Crc16Oracle(payload[..^4]), payload[^4..]);
         Assert.True(PixPayload.IsValid(payload));
@@ -279,5 +283,12 @@ public sealed class PixPropertyTests
         {
             Assert.False(PixPayload.IsValid(mutated));
         }
+    }
+
+    /// <summary>Random BR Code text of 1..max-1 characters with at least one letter or digit.</summary>
+    private static string NonBlank(Random random, int max)
+    {
+        string text = Oracles.RandomString(random.Next(), random.Next(1, max), "abcXYZ 0123456789");
+        return text.Any(c => c != ' ') ? text : "A" + text[1..];
     }
 }

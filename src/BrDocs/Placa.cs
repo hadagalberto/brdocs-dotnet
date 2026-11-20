@@ -259,6 +259,18 @@ public readonly record struct Placa : IEquatable<Placa>, ISpanFormattable, ISpan
         {
             return false;
         }
+        // SPEC.md and the READMEs document the all-zero default as structurally valid (plates
+        // have no check digit and no reserved-sequence rule). "000-0000" is its display form,
+        // so this documented exception precedes the usual three-leading-letters rule.
+        bool allZero = true;
+        foreach (char c in chars)
+        {
+            allZero &= c == '0';
+        }
+        if (allZero)
+        {
+            return true;
+        }
         if (!char.IsBetween(chars[0], 'A', 'Z') || !char.IsBetween(chars[1], 'A', 'Z') || !char.IsBetween(chars[2], 'A', 'Z'))
         {
             return false;

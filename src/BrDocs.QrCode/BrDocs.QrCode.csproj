@@ -13,6 +13,8 @@
     </Description>
     <PackageTags>brazil;brazilian;pix;br-code;qrcode;qr-code;iso18004;svg;png;reed-solomon;brdocs</PackageTags>
     <IsPackable>true</IsPackable>
+    <IsAotCompatible>true</IsAotCompatible>
+    <IsTrimmable>true</IsTrimmable>
   </PropertyGroup>
 
   <ItemGroup>

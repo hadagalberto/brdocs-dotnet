@@ -1,10 +1,11 @@
 namespace BrDocs;
 
 /// <summary>
-/// Normalization of the BR Code text fields 59 (merchant name) and 60 (merchant city):
-/// diacritics are stripped, the optional uppercasing is applied, the EMV/BCB maximum lengths
-/// are enforced and any character outside the allowed set — ASCII letters, digits and spaces —
-/// is rejected.
+/// Normalization of the BR Code text fields: field 59 (merchant name), field 60 (merchant city)
+/// and the free-text fields (26-02 infoAdicional, 62 sub-fields). Diacritics are stripped, the
+/// optional uppercasing is applied, maximum lengths are enforced, and every character is mapped
+/// into the single-byte EMV/BCB character set so that TLV lengths and the CRC describe the same
+/// bytes that a QR writer emits.
 /// </summary>
 /// <remarks>
 /// The EMV® QRCPS-MPM common character set limits these fields to simple text; the Banco
@@ -14,6 +15,11 @@ namespace BrDocs;
 /// combining diacritical marks (U+0300–U+036F) are dropped, so both "São Paulo" and
 /// "S\u0303ao Paulo" normalize to "Sao Paulo". Letters without a single-letter ASCII base
 /// (Æ, Ð, Ø, Þ, ß) are rejected, as are the multiplication and division signs.
+/// <para>
+/// Name and city allow ASCII letters, digits and spaces and must contain at least one letter or
+/// digit (a value of only spaces carries no merchant identity). Free-text fields additionally
+/// allow ASCII punctuation, which the BCB manual defines as "conjunto livre de caracteres".
+/// </para>
 /// </remarks>
 internal static class PixText
 {
@@ -27,7 +33,7 @@ internal static class PixText
     /// Normalizes <paramref name="source"/> into <paramref name="destination"/>: combining marks
     /// are dropped, precomposed accented letters are mapped to their base letter, the value is
     /// optionally uppercased, and the result must hold 1..<paramref name="maxLength"/> allowed
-    /// characters — ASCII letters, digits and spaces.
+    /// characters — ASCII letters, digits and spaces, at least one of which is not a space.
     /// </summary>
     /// <param name="source">The raw merchant name or city text.</param>
     /// <param name="maxLength">The maximum accepted length (25 for names, 15 for cities).</param>
@@ -35,13 +41,15 @@ internal static class PixText
     /// <param name="destination">The destination buffer; sized to <paramref name="maxLength"/>.</param>
     /// <param name="written">The number of characters written; <c>0</c> when <see langword="false"/>.</param>
     /// <returns>
-    /// <see langword="false"/> when the text is empty, holds a character outside the allowed set,
-    /// or does not fit within <paramref name="maxLength"/> after normalization.
+    /// <see langword="false"/> when the text is empty, holds only spaces, holds a character
+    /// outside the allowed set, or does not fit within <paramref name="maxLength"/> after
+    /// normalization.
     /// </returns>
     /// <remarks>This method performs no allocations.</remarks>
     internal static bool TryNormalize(ReadOnlySpan<char> source, int maxLength, bool uppercase, Span<char> destination, out int written)
     {
         written = 0;
+        bool hasLetterOrDigit = false;
         foreach (char c in source)
         {
             if (c is >= '\u0300' and <= '\u036F')
@@ -60,22 +68,112 @@ internal static class PixText
                 written = 0;
                 return false;
             }
+            if (mapped != ' ')
+            {
+                hasLetterOrDigit = true;
+            }
             destination[written++] = uppercase && mapped is >= 'a' and <= 'z' ? (char)(mapped - 32) : mapped;
+        }
+        // A name/city of only spaces is not a value: it must contain a letter or digit.
+        return hasLetterOrDigit;
+    }
+
+    /// <summary>
+    /// Normalizes free text (field 26-02 and field 62 sub-fields) into the single-byte character
+    /// set: diacritics are stripped, ASCII printable characters (0x20–0x7E) are kept as-is and
+    /// every other character is rejected. The result is non-empty and fits the destination.
+    /// </summary>
+    /// <remarks>This method performs no allocations.</remarks>
+    internal static bool TryNormalizeFreeText(ReadOnlySpan<char> source, Span<char> destination, out int written)
+    {
+        written = 0;
+        foreach (char c in source)
+        {
+            if (c is >= '\u0300' and <= '\u036F')
+            {
+                continue;
+            }
+            char mapped;
+            if (c < 0x80)
+            {
+                if (c is < '\u0020' or > '\u007E')
+                {
+                    written = 0;
+                    return false;
+                }
+                mapped = c;
+            }
+            else
+            {
+                mapped = MapAccentedLetter(c);
+                if (mapped == '\0')
+                {
+                    written = 0;
+                    return false;
+                }
+            }
+            if (written >= destination.Length)
+            {
+                written = 0;
+                return false;
+            }
+            destination[written++] = mapped;
         }
         return written > 0;
     }
 
     /// <summary>
-    /// Maps one input character to its normalized form: ASCII letters, digits and spaces pass
-    /// through; precomposed Latin-1 accented letters map to their base letter; everything else
-    /// maps to '\0' (invalid).
+    /// Validates that already-encoded free text uses only single-byte printable ASCII — the
+    /// invariant that <see cref="TryNormalizeFreeText"/> establishes when the builder emits it.
+    /// </summary>
+    /// <remarks>This method performs no allocations.</remarks>
+    internal static bool IsAllowedFreeText(ReadOnlySpan<char> value)
+    {
+        foreach (char c in value)
+        {
+            if (c is < '\u0020' or > '\u007E')
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /// <summary>
+    /// Validates an already-encoded merchant name/city: ASCII letters, digits and spaces with at
+    /// least one letter or digit (mirrors <see cref="TryNormalize"/> without uppercasing).
+    /// </summary>
+    /// <remarks>This method performs no allocations.</remarks>
+    internal static bool IsAllowedText(ReadOnlySpan<char> value)
+    {
+        bool hasLetterOrDigit = false;
+        foreach (char c in value)
+        {
+            if (!char.IsAsciiLetterOrDigit(c) && c != ' ')
+            {
+                return false;
+            }
+            if (c != ' ')
+            {
+                hasLetterOrDigit = true;
+            }
+        }
+        return hasLetterOrDigit;
+    }
+
+    /// <summary>
+    /// Maps one name/city input character to its normalized form: ASCII letters, digits and
+    /// spaces pass through; precomposed Latin-1 accented letters map to their base letter;
+    /// everything else maps to '\0' (invalid).
     /// </summary>
     private static char MapChar(char c)
+        => c is (>= 'a' and <= 'z') or (>= 'A' and <= 'Z') or (>= '0' and <= '9') or ' '
+            ? c
+            : MapAccentedLetter(c);
+
+    /// <summary>Maps a precomposed Latin-1 accented letter to its single-letter ASCII base.</summary>
+    private static char MapAccentedLetter(char c)
     {
-        if (c is (>= 'a' and <= 'z') or (>= 'A' and <= 'Z') or (>= '0' and <= '9') or ' ')
-        {
-            return c;
-        }
         if (c < '\u00C0' || c > '\u00FF')
         {
             return '\0';

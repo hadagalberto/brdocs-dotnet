@@ -85,10 +85,14 @@ public sealed class PixPayloadBuilder
     /// <summary>
     /// Sets the additional information of the merchant account template (field 26-02,
     /// "infoAdicional") — free text shown to the payer while tracking the payment.
-    /// Passing <see langword="null"/> clears it.
+    /// Passing <see langword="null"/> clears it. Diacritics are stripped so the text stays inside
+    /// the single-byte BR Code character set ("Café" is encoded as "Cafe").
     /// </summary>
     /// <param name="description">1..72 characters, or <see langword="null"/> to omit the field.</param>
-    /// <exception cref="ArgumentException">The description is empty or longer than 72 characters.</exception>
+    /// <exception cref="ArgumentException">
+    /// The normalized description is empty, longer than 72 characters or holds a character
+    /// outside the single-byte character set.
+    /// </exception>
     /// <exception cref="InvalidOperationException">
     /// The payload is dynamic: the payer reads the charge data from the location URL, and a
     /// dynamic code carries only the GUI and the location.
@@ -104,13 +108,10 @@ public sealed class PixPayloadBuilder
             _description = null;
             return this;
         }
-        if (description.Length > PixBrCode.MaxDescriptionLength)
-        {
-            throw new ArgumentException(
-                $"The additional information holds at most {PixBrCode.MaxDescriptionLength.ToString(CultureInfo.InvariantCulture)} characters.",
-                nameof(description));
-        }
-        _description = description;
+        // Field 26-02 is "conjunto livre de caracteres" (Manual section 2.6, footnote 24), but
+        // the BR Code character set is single-byte: strip diacritics so the TLV length and the
+        // CRC describe the exact bytes a QR writer emits (independent review finding 2).
+        _description = PixPayload.NormalizeFreeText(description, PixBrCode.MaxDescriptionLength, nameof(description));
         return this;
     }
 
@@ -255,15 +256,13 @@ public sealed class PixPayloadBuilder
         {
             throw new ArgumentException($"'{id}' is not a valid additional data sub-field ID (01-09 except the txid 05, and 50-99).", nameof(id));
         }
-        if (value.Length is 0 or > PixBrCode.AdditionalDataMaxLength)
-        {
-            throw new ArgumentException($"The additional data value holds 1..{PixBrCode.AdditionalDataMaxLength.ToString(CultureInfo.InvariantCulture)} characters.", nameof(value));
-        }
+        // The same single-byte invariant applies to every free-text sub-field of field 62.
+        string normalized = PixPayload.NormalizeFreeText(value, PixBrCode.AdditionalDataMaxLength, nameof(value));
         if (_additionalData.Exists(field => field.Id == id))
         {
             throw new ArgumentException($"The additional data sub-field {id} is already set.", nameof(id));
         }
-        _additionalData.Add(PixTlv.CreateChild(id, value));
+        _additionalData.Add(PixTlv.CreateChild(id, normalized));
         return this;
     }
 

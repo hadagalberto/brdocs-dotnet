@@ -428,4 +428,20 @@ public sealed class PixPayload : IEquatable<PixPayload>
         }
         return new string(buffer[..written]);
     }
+
+    /// <summary>
+    /// Normalizes free-text fields (26-02, 62 sub-fields) into the single-byte character set so
+    /// that the TLV length and the CRC are computed over the same bytes that a QR writer emits.
+    /// </summary>
+    internal static string NormalizeFreeText(string text, int maxLength, string paramName)
+    {
+        Span<char> buffer = stackalloc char[maxLength];
+        if (!PixText.TryNormalizeFreeText(text.AsSpan(), buffer, out int written))
+        {
+            throw new ArgumentException(
+                $"'{DocumentText.Preview(text)}' is not valid BR Code free text: 1..{maxLength.ToString(CultureInfo.InvariantCulture)} single-byte characters (accents are stripped).",
+                paramName);
+        }
+        return new string(buffer[..written]);
+    }
 }

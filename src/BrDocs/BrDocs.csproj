@@ -19,6 +19,9 @@
     </Description>
     <PackageTags>brazil;brazilian;cpf;cnpj;cep;pis;pasep;nit;titulo-eleitor;cnh;renavam;placa;mercosul;telefone;ddd;documents;validation;valueobject;brdocs;boleto;febraban;linha-digitavel;codigo-de-barras;arrecadacao;convenio;payments;pix;br-code;copia-e-cola;emv;qrcps;tlv;crc16;payments</PackageTags>
     <IsPackable>true</IsPackable>
+    <!-- The README advertises AOT/trimming compatibility: opt in so the SDK analyzers enforce it. -->
+    <IsAotCompatible>true</IsAotCompatible>
+    <IsTrimmable>true</IsTrimmable>
   </PropertyGroup>
 
   <ItemGroup>
